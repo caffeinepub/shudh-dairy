@@ -10,6 +10,8 @@ import {
   getTheme,
 } from "@/utils/storeCustomization";
 import {
+  ArrowUp,
+  ChevronDown,
   Leaf,
   Loader2,
   Mail,
@@ -234,6 +236,14 @@ export function StorePage() {
 
   const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
 
+  // ── Scroll to top visibility ─────────────────────────────────────────────
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 300);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // ── Filtered products ────────────────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -286,7 +296,7 @@ export function StorePage() {
           <motion.button
             data-ocid="header.cart_button"
             onClick={() => setIsCartOpen(true)}
-            className="relative flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm"
+            className="relative flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl font-semibold text-sm hover:bg-primary/90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 shadow-sm"
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4 }}
@@ -320,40 +330,93 @@ export function StorePage() {
             alt="Fresh Indian dairy farm"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[oklch(0.14_0.04_45/0.82)] via-[oklch(0.14_0.04_45/0.45)] to-transparent" />
+          {/* Stronger gradient for better legibility */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[oklch(0.10_0.04_45/0.90)] via-[oklch(0.12_0.04_45/0.60)] to-[oklch(0.14_0.04_45/0.15)]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[oklch(0.10_0.04_45/0.50)] via-transparent to-transparent" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28 md:py-36">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 sm:py-32 md:py-40">
           <motion.div
-            className="max-w-xl"
+            className="max-w-2xl"
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
           >
-            <span className="inline-block bg-primary/30 backdrop-blur-md text-white border border-primary/50 text-xs font-semibold px-3.5 py-1.5 rounded-full mb-5 tracking-wide">
+            <motion.span
+              className="inline-block bg-primary/30 backdrop-blur-md text-white border border-primary/50 text-xs font-semibold px-3.5 py-1.5 rounded-full mb-5 tracking-wide"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+            >
               ✨ Trusted by 10,000+ families
-            </span>
-            <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-tight mb-4">
+            </motion.span>
+            <motion.h2
+              className="font-display text-5xl sm:text-6xl md:text-7xl font-bold text-white leading-tight mb-5"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18, duration: 0.6, ease: "easeOut" }}
+            >
               Pure Dairy,
               <br />
-              Delivered Fresh
-            </h2>
-            <p className="text-base sm:text-lg text-white/85 mb-8 leading-relaxed">
+              <span style={{ color: "oklch(0.88 0.16 72)" }}>
+                Delivered Fresh
+              </span>
+            </motion.h2>
+            <motion.p
+              className="text-base sm:text-lg text-white/90 mb-9 leading-relaxed max-w-lg"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.28, duration: 0.5 }}
+            >
               Handpicked Ghee &amp; Paneer from trusted farms — straight to your
               door. No preservatives. No compromise.
-            </p>
-            <Button
-              data-ocid="hero.primary_button"
-              size="lg"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base px-8 h-12 rounded-xl shadow-lg"
-              onClick={() => {
-                document
-                  .getElementById("products")
-                  ?.scrollIntoView({ behavior: "smooth" });
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.38, duration: 0.5 }}
+            >
+              <Button
+                data-ocid="hero.primary_button"
+                size="lg"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary font-semibold text-base px-10 h-14 rounded-2xl shadow-xl shadow-primary/30 transition-all duration-150 hover:shadow-primary/40 hover:scale-[1.02]"
+                onClick={() => {
+                  document
+                    .getElementById("products")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                Shop Now
+              </Button>
+            </motion.div>
+          </motion.div>
+
+          {/* Scroll indicator */}
+          <motion.div
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 cursor-pointer"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
+            onClick={() =>
+              document
+                .getElementById("products")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+            aria-label="Scroll to products"
+          >
+            <span className="text-white/60 text-xs tracking-widest uppercase font-medium">
+              Explore
+            </span>
+            <motion.div
+              animate={{ y: [0, 5, 0] }}
+              transition={{
+                repeat: Number.POSITIVE_INFINITY,
+                duration: 1.6,
+                ease: "easeInOut",
               }}
             >
-              Shop Now
-            </Button>
+              <ChevronDown size={20} className="text-white/60" />
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -439,7 +502,7 @@ export function StorePage() {
                 key={cat}
                 data-ocid={`products.tab.${idx + 1}`}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border ${
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-150 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 active:scale-95 ${
                   activeCategory === cat
                     ? "bg-primary text-primary-foreground border-primary shadow-sm"
                     : "bg-card text-foreground border-border hover:border-primary hover:text-primary"
@@ -462,7 +525,7 @@ export function StorePage() {
               placeholder="Search products…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 rounded-xl border-border bg-card focus-visible:ring-primary"
+              className="pl-9 rounded-xl border-border bg-card focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
             />
           </div>
         </div>
@@ -622,7 +685,7 @@ export function StorePage() {
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-foreground">
+          <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>
               © {new Date().getFullYear()} SUNRISE MILK AND AGRO PRODUCT'S.
               Built with{" "}
@@ -639,16 +702,48 @@ export function StorePage() {
                 caffeine.ai
               </a>
             </span>
-            <a
-              href="/admin"
-              data-ocid="footer.admin.link"
-              className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-            >
-              Admin
-            </a>
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                data-ocid="footer.scroll_top_button"
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                className="text-xs text-muted-foreground/70 hover:text-primary transition-colors flex items-center gap-1"
+              >
+                <ArrowUp size={12} />
+                Back to Top
+              </button>
+              <a
+                href="/admin"
+                data-ocid="footer.admin.link"
+                className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+              >
+                Admin
+              </a>
+            </div>
           </div>
         </div>
       </footer>
+
+      {/* ── SCROLL TO TOP ──────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            data-ocid="store.scroll_top_button"
+            type="button"
+            className="scroll-top-btn"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            aria-label="Scroll to top"
+            initial={{ opacity: 0, x: 60 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 60 }}
+            transition={{ type: "spring", stiffness: 380, damping: 28 }}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.94 }}
+          >
+            <ArrowUp size={18} />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* ── CART DRAWER ────────────────────────────────────────────────────── */}
       <CartDrawer

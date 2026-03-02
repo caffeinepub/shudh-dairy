@@ -1,39 +1,44 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createActorWithConfig } from "@/config";
 import { useActor } from "@/hooks/useActor";
 import { useNavigate } from "@tanstack/react-router";
-import { Eye, EyeOff, Loader2, Lock, User } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  RefreshCw,
+  User,
+  Wifi,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 
 export function AdminLogin() {
   const navigate = useNavigate();
-  const { actor, isFetching: actorLoading } = useActor();
+  const { actor } = useActor();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username.trim() || !password.trim()) {
-      setError("Please enter both username and password.");
-      return;
-    }
-    if (!actor) {
-      setError("Connecting to backend… please try again in a moment.");
-      return;
-    }
+  const performLogin = async (
+    currentActor: NonNullable<typeof actor>,
+    user: string,
+    pass: string,
+  ) => {
     setIsLoading(true);
     setError("");
     try {
-      const success = await actor.adminLogin(username, password);
+      const success = await currentActor.adminLogin(user, pass);
       if (success) {
         const token = `admin_${Date.now()}_${Math.random().toString(36).slice(2)}`;
         localStorage.setItem("adminToken", token);
-        localStorage.setItem("adminUser", username);
+        localStorage.setItem("adminUser", user);
         navigate({ to: "/admin/dashboard" });
       } else {
         setError(
@@ -47,7 +52,44 @@ export function AdminLogin() {
     }
   };
 
-  const isConnecting = actorLoading && !actor;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      setError("Please enter both username and password.");
+      return;
+    }
+
+    setError("");
+
+    if (actor) {
+      // Actor already available — log in immediately
+      await performLogin(actor, username, password);
+      return;
+    }
+
+    // Actor not ready — try to create it directly with a 20-second timeout
+    setIsConnecting(true);
+    try {
+      const actorPromise = createActorWithConfig();
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 20_000),
+      );
+
+      const freshActor = await Promise.race([actorPromise, timeoutPromise]);
+      setIsConnecting(false);
+      await performLogin(freshActor, username, password);
+    } catch (err) {
+      setIsConnecting(false);
+      const isTimeout = err instanceof Error && err.message === "timeout";
+      setError(
+        isTimeout
+          ? "Server is taking too long to respond — please refresh the page and try again."
+          : "Could not connect to the server. Please refresh the page and try again.",
+      );
+    }
+  };
+
+  const busy = isLoading || isConnecting;
 
   return (
     <div className="admin-login-bg min-h-screen flex items-center justify-center px-4">
@@ -58,7 +100,7 @@ export function AdminLogin() {
       />
 
       <motion.div
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-lg relative z-10"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -68,7 +110,7 @@ export function AdminLogin() {
           {/* Header strip */}
           <div className="admin-card-header px-8 pt-8 pb-6 text-center">
             <motion.div
-              className="w-14 h-14 admin-icon-ring rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl shadow-lg"
+              className="w-16 h-16 admin-icon-ring admin-icon-glow rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl shadow-lg"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{
@@ -88,9 +130,34 @@ export function AdminLogin() {
             </p>
           </div>
 
+          {/* Connecting banner */}
+          {isConnecting && (
+            <motion.div
+              data-ocid="admin.login.loading_state"
+              className="mx-8 mb-2 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <Loader2 size={14} className="animate-spin shrink-0" />
+              <span>Connecting to server, please wait…</span>
+            </motion.div>
+          )}
+
+          {/* Ready notice when actor is available */}
+          {!isConnecting && actor && (
+            <motion.div
+              className="mx-8 mb-2 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <Wifi size={14} className="shrink-0" />
+              <span>Ready — enter your credentials to sign in.</span>
+            </motion.div>
+          )}
+
           {/* Form */}
           <div className="px-8 pb-8 pt-2">
-            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               {/* Username */}
               <div className="space-y-1.5">
                 <Label
@@ -112,7 +179,7 @@ export function AdminLogin() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     autoComplete="username"
-                    disabled={isLoading}
+                    disabled={busy}
                     className="admin-input pl-10"
                     aria-describedby={error ? "admin-error" : undefined}
                   />
@@ -134,13 +201,13 @@ export function AdminLogin() {
                   />
                   <Input
                     id="admin-password"
-                    data-ocid="admin.login.input"
+                    data-ocid="admin.password.input"
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
-                    disabled={isLoading}
+                    disabled={busy}
                     className="admin-input pl-10 pr-10"
                     aria-describedby={error ? "admin-error" : undefined}
                   />
@@ -169,7 +236,18 @@ export function AdminLogin() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25 }}
                 >
-                  {error}
+                  <p>{error}</p>
+                  {(error.toLowerCase().includes("refresh") ||
+                    error.toLowerCase().includes("starting up")) && (
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="mt-2 flex items-center gap-1.5 text-xs font-semibold underline underline-offset-2 hover:no-underline"
+                    >
+                      <RefreshCw size={12} />
+                      Refresh page
+                    </button>
+                  )}
                 </motion.div>
               )}
 
@@ -177,18 +255,18 @@ export function AdminLogin() {
               <Button
                 type="submit"
                 data-ocid="admin.login.submit_button"
-                disabled={isLoading || isConnecting}
+                disabled={busy}
                 className="admin-submit-btn w-full h-11 font-semibold text-sm rounded-xl mt-2"
               >
-                {isConnecting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connecting…
-                  </>
-                ) : isLoading ? (
+                {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Signing in…
+                  </>
+                ) : isConnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting…
                   </>
                 ) : (
                   "Sign In to Admin Panel"

@@ -17,6 +17,54 @@ const categoryBadgeClass: Record<string, string> = {
   Combo: "badge-combo",
 };
 
+// Static rating per category — purely decorative
+const categoryRating: Record<string, { score: number; label: string }> = {
+  Ghee: { score: 4.8, label: "4.8" },
+  Paneer: { score: 4.6, label: "4.6" },
+};
+
+function StarRating({ category }: { category: string }) {
+  const rating = categoryRating[category] ?? { score: 4.7, label: "4.7" };
+  // Render 5 stars: filled, half, or empty based on score
+  return (
+    <div
+      className="flex items-center gap-1"
+      aria-label={`${rating.label} stars`}
+    >
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => {
+          const filled = star <= Math.floor(rating.score);
+          const half =
+            !filled &&
+            star === Math.ceil(rating.score) &&
+            rating.score % 1 >= 0.3;
+          return (
+            <span
+              key={star}
+              className="text-sm leading-none"
+              style={{
+                color:
+                  filled || half
+                    ? "oklch(0.78 0.18 72)"
+                    : "oklch(0.82 0.04 80)",
+              }}
+              aria-hidden="true"
+            >
+              {filled ? "★" : half ? "⯨" : "☆"}
+            </span>
+          );
+        })}
+      </div>
+      <span
+        className="text-xs font-semibold"
+        style={{ color: "oklch(0.55 0.10 62)" }}
+      >
+        {rating.label}
+      </span>
+    </div>
+  );
+}
+
 export function ProductCard({ product, index, onAddToCart }: ProductCardProps) {
   const formatINR = (amount: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -39,8 +87,8 @@ export function ProductCard({ product, index, onAddToCart }: ProductCardProps) {
       }}
       whileHover={{ y: -3 }}
     >
-      {/* Product image */}
-      <div className="relative overflow-hidden aspect-square bg-accent/30">
+      {/* Product image — taller aspect ratio for premium feel */}
+      <div className="relative overflow-hidden aspect-[4/3] bg-accent/30">
         <img
           src={product.image}
           alt={product.name}
@@ -76,6 +124,9 @@ export function ProductCard({ product, index, onAddToCart }: ProductCardProps) {
 
       {/* Content */}
       <div className="flex flex-col flex-1 p-4 gap-2">
+        {/* Star rating */}
+        <StarRating category={product.category} />
+
         {/* Product name */}
         <h3 className="font-display text-lg font-semibold leading-snug text-card-foreground group-hover:text-primary transition-colors duration-200">
           {product.name}
@@ -86,26 +137,30 @@ export function ProductCard({ product, index, onAddToCart }: ProductCardProps) {
           {product.description}
         </p>
 
-        {/* Price + CTA */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border gap-2">
-          <span className="font-display text-2xl font-bold text-primary tracking-tight">
-            {formatINR(product.price)}
-          </span>
+        {/* Price + CTA — stacked for clear hierarchy */}
+        <div className="mt-3 pt-3 border-t border-border space-y-3">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display text-2xl font-bold text-primary tracking-tight">
+              {formatINR(product.price)}
+            </span>
+            <span className="text-xs text-muted-foreground font-medium">
+              / {product.weight}
+            </span>
+          </div>
 
           {product.inStock ? (
             <Button
               data-ocid={`products.add_button.${index}`}
               onClick={() => onAddToCart(product.id)}
-              size="sm"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-semibold gap-1.5 shrink-0"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:outline-none rounded-xl font-semibold gap-2 transition-all duration-150"
             >
-              <ShoppingCart size={14} />
-              Add
+              <ShoppingCart size={15} />
+              Add to Cart
             </Button>
           ) : (
             <Badge
               variant="secondary"
-              className="text-xs text-muted-foreground bg-muted"
+              className="w-full justify-center py-1.5 text-xs text-muted-foreground bg-muted"
             >
               Out of Stock
             </Badge>

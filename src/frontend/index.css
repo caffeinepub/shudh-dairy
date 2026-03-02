@@ -149,6 +149,11 @@
     background: oklch(0.25 0.08 255);
     border: 1px solid oklch(0.38 0.10 255);
   }
+  .admin-icon-glow {
+    box-shadow:
+      0 0 0 4px oklch(0.38 0.14 255 / 0.20),
+      0 0 18px 4px oklch(0.52 0.18 255 / 0.18);
+  }
   .admin-heading {
     color: oklch(0.96 0.01 260);
   }
@@ -172,7 +177,8 @@
   }
   .admin-input:focus-visible {
     border-color: oklch(0.58 0.18 255) !important;
-    ring-color: oklch(0.58 0.18 255 / 0.3) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px oklch(0.58 0.18 255 / 0.25) !important;
   }
   .admin-error {
     background: oklch(0.22 0.08 30);
@@ -183,9 +189,17 @@
     background: oklch(0.52 0.18 255) !important;
     color: oklch(0.99 0.005 260) !important;
     border: none !important;
+    transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease !important;
   }
   .admin-submit-btn:hover:not(:disabled) {
     background: oklch(0.58 0.20 255) !important;
+  }
+  .admin-submit-btn:active:not(:disabled) {
+    transform: scale(0.97) !important;
+  }
+  .admin-submit-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 3px oklch(0.58 0.18 255 / 0.40) !important;
   }
   .admin-hint-divider {
     border-color: oklch(0.28 0.04 260);
@@ -245,9 +259,17 @@
   .admin-add-btn {
     background: oklch(0.52 0.18 255) !important;
     color: white !important;
+    transition: background 0.15s ease, transform 0.1s ease !important;
   }
   .admin-add-btn:hover {
     background: oklch(0.58 0.20 255) !important;
+  }
+  .admin-add-btn:active {
+    transform: scale(0.96) !important;
+  }
+  .admin-add-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 3px oklch(0.52 0.18 255 / 0.35) !important;
   }
   .admin-table-card {
     background: white;
@@ -295,17 +317,33 @@
   }
   .admin-edit-btn {
     color: oklch(0.48 0.10 255) !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
   }
   .admin-edit-btn:hover {
     background: oklch(0.92 0.04 255) !important;
     color: oklch(0.38 0.14 255) !important;
   }
+  .admin-edit-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 2px oklch(0.52 0.18 255 / 0.35) !important;
+  }
+  .admin-edit-btn:active {
+    transform: scale(0.94) !important;
+  }
   .admin-delete-btn {
     color: oklch(0.55 0.10 30) !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
   }
   .admin-delete-btn:hover {
     background: oklch(0.94 0.04 30) !important;
     color: oklch(0.42 0.16 30) !important;
+  }
+  .admin-delete-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 2px oklch(0.52 0.16 30 / 0.35) !important;
+  }
+  .admin-delete-btn:active {
+    transform: scale(0.94) !important;
   }
   .admin-spinner {
     color: oklch(0.52 0.18 255);
@@ -335,9 +373,12 @@
   .admin-modal-input {
     border-color: oklch(0.84 0.03 258) !important;
     color: oklch(0.18 0.04 258) !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
   }
   .admin-modal-input:focus-visible {
     border-color: oklch(0.52 0.18 255) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px oklch(0.52 0.18 255 / 0.18) !important;
   }
   .admin-select-content {
     background: white !important;
@@ -355,9 +396,17 @@
   .admin-save-btn {
     background: oklch(0.52 0.18 255) !important;
     color: white !important;
+    transition: background 0.15s ease, transform 0.1s ease !important;
   }
   .admin-save-btn:hover:not(:disabled) {
     background: oklch(0.58 0.20 255) !important;
+  }
+  .admin-save-btn:active:not(:disabled) {
+    transform: scale(0.96) !important;
+  }
+  .admin-save-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 3px oklch(0.52 0.18 255 / 0.35) !important;
   }
   .admin-delete-confirm-btn {
     background: oklch(0.52 0.16 30) !important;
@@ -368,6 +417,127 @@
   }
   .admin-highlight {
     color: oklch(0.20 0.06 258);
+  }
+
+  /* Admin stats cards */
+  .admin-stats-card {
+    background: white;
+    border: 1px solid oklch(0.88 0.02 258);
+    border-radius: 1rem;
+    padding: 1.25rem 1.5rem;
+  }
+  .admin-stats-label {
+    color: oklch(0.48 0.05 258);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .admin-stats-value {
+    color: oklch(0.18 0.04 258);
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .admin-stats-icon {
+    background: oklch(0.93 0.04 258);
+    color: oklch(0.48 0.10 258);
+    border-radius: 0.75rem;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .admin-stats-icon-instock {
+    background: oklch(0.93 0.06 145);
+    color: oklch(0.32 0.10 145);
+  }
+  .admin-stats-icon-oos {
+    background: oklch(0.93 0.04 30);
+    color: oklch(0.42 0.12 30);
+  }
+
+  /* Admin view store button */
+  .admin-view-store-btn {
+    color: oklch(0.65 0.10 255) !important;
+    border-color: oklch(0.40 0.06 258) !important;
+  }
+  .admin-view-store-btn:hover {
+    color: oklch(0.80 0.08 260) !important;
+    background: oklch(0.22 0.03 258) !important;
+  }
+
+  /* Admin grid view card */
+  .admin-grid-card {
+    background: white;
+    border: 1px solid oklch(0.88 0.02 258);
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .admin-grid-card:hover {
+    box-shadow: 0 4px 16px -4px oklch(0.52 0.18 255 / 0.15);
+    transform: translateY(-1px);
+  }
+
+  /* View toggle buttons */
+  .admin-view-toggle {
+    display: flex;
+    gap: 0.25rem;
+    background: oklch(0.93 0.015 258);
+    padding: 0.25rem;
+    border-radius: 0.625rem;
+  }
+  .admin-view-toggle-btn {
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.5rem;
+    color: oklch(0.52 0.06 258);
+    transition: background 0.15s ease, color 0.15s ease;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .admin-view-toggle-btn:hover {
+    background: oklch(0.88 0.02 258);
+    color: oklch(0.30 0.06 258);
+  }
+  .admin-view-toggle-btn.active {
+    background: white;
+    color: oklch(0.30 0.10 255);
+    box-shadow: 0 1px 4px -1px oklch(0.20 0.04 260 / 0.15);
+  }
+
+  /* Scroll to top button */
+  .scroll-top-btn {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 40;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: oklch(var(--primary));
+    color: oklch(var(--primary-foreground));
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px -4px oklch(0.68 0.19 62 / 0.45);
+    transition: background 0.2s ease;
+  }
+  .scroll-top-btn:hover {
+    background: oklch(0.72 0.20 62);
+  }
+  .scroll-top-btn:active {
+    transform: scale(0.92);
+  }
+  .scroll-top-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px oklch(0.68 0.19 62 / 0.45);
   }
 
   /* Store Settings section tokens */
@@ -393,6 +563,13 @@
 @layer utilities {
   .font-display {
     font-family: "Playfair Display", Georgia, serif;
+  }
+
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .line-clamp-2 {

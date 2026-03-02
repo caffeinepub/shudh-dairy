@@ -28,6 +28,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useActor } from "@/hooks/useActor";
 import {
   type StoreTheme,
@@ -42,9 +48,13 @@ import {
 } from "@/utils/storeCustomization";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  ExternalLink,
   Image,
+  LayoutGrid,
+  LayoutList,
   Loader2,
   LogOut,
+  Package,
   PackagePlus,
   Palette,
   Pencil,
@@ -273,6 +283,9 @@ export function AdminDashboard() {
     navigate({ to: "/admin" });
   };
 
+  // ── Products view mode ────────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+
   // ── Store Settings ─────────────────────────────────────────────────────────
   const [logoPreview, setLogoPreview] = useState<string>(() => getLogoUrl());
   const [theme, setThemeState] = useState<StoreTheme>(() => getTheme());
@@ -317,7 +330,42 @@ export function AdminDashboard() {
       maximumFractionDigits: 0,
     }).format(amount);
 
+  // Show a connecting overlay while actor isn't ready yet
+  const isActorConnecting = actorLoading && !actor;
+
   if (!token) return null;
+
+  if (isActorConnecting) {
+    return (
+      <div className="admin-dash-bg min-h-screen flex flex-col items-center justify-center gap-6 px-4">
+        <div className="admin-card rounded-2xl p-10 flex flex-col items-center gap-5 shadow-2xl max-w-sm w-full text-center">
+          <div className="w-14 h-14 admin-icon-ring admin-icon-glow rounded-2xl flex items-center justify-center text-3xl shadow-lg">
+            🐄
+          </div>
+          <div className="space-y-1">
+            <h2 className="admin-heading text-lg font-bold">
+              SUNRISE MILK AND AGRO PRODUCT'S
+            </h2>
+            <p className="admin-sub text-xs font-medium tracking-widest uppercase">
+              Admin Panel
+            </p>
+          </div>
+          <div
+            data-ocid="admin.dashboard.loading_state"
+            className="flex flex-col items-center gap-3 w-full"
+          >
+            <Loader2 className="admin-spinner animate-spin" size={28} />
+            <p className="admin-section-sub text-sm font-medium">
+              Connecting to server…
+            </p>
+            <p className="text-xs admin-hint">
+              This may take a few seconds on first load.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-dash-bg min-h-screen">
@@ -326,12 +374,12 @@ export function AdminDashboard() {
       {/* ── HEADER ─────────────────────────────────────────────────────── */}
       <header className="admin-dash-header sticky top-0 z-20 border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg admin-header-icon flex items-center justify-center text-base shrink-0">
               🐄
             </div>
-            <div>
-              <h1 className="admin-dash-title text-base font-bold leading-none">
+            <div className="min-w-0">
+              <h1 className="admin-dash-title text-sm sm:text-base font-bold leading-none truncate max-w-[180px] sm:max-w-xs md:max-w-none">
                 SUNRISE MILK AND AGRO PRODUCT'S
               </h1>
               <p className="admin-dash-subtitle text-xs mt-0.5 font-semibold tracking-widest uppercase">
@@ -339,11 +387,21 @@ export function AdminDashboard() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             <span className="admin-user-badge hidden sm:inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full admin-user-dot" />
               {adminUser}
             </span>
+            <Button
+              data-ocid="admin.header.view_store_button"
+              variant="ghost"
+              size="sm"
+              onClick={() => window.open("/", "_blank")}
+              className="admin-view-store-btn gap-1.5 text-xs font-semibold border border-transparent"
+            >
+              <ExternalLink size={13} />
+              <span className="hidden sm:inline">View Store</span>
+            </Button>
             <Button
               data-ocid="admin.dashboard.button"
               variant="ghost"
@@ -360,14 +418,72 @@ export function AdminDashboard() {
 
       {/* ── MAIN ───────────────────────────────────────────────────────── */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+        {/* ── STATS CARDS ─────────────────────────────────────────────── */}
+        <motion.div
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          {/* Total Products */}
+          <div
+            data-ocid="admin.stats.total_card"
+            className="admin-stats-card flex items-center gap-4"
+          >
+            <div className="admin-stats-icon">
+              <Package size={20} />
+            </div>
+            <div>
+              <p className="admin-stats-label">Total Products</p>
+              <p className="admin-stats-value">
+                {loadingProducts ? "—" : products.length}
+              </p>
+            </div>
+          </div>
+          {/* In Stock */}
+          <div
+            data-ocid="admin.stats.instock_card"
+            className="admin-stats-card flex items-center gap-4"
+          >
+            <div className="admin-stats-icon admin-stats-icon-instock">
+              <Package size={20} />
+            </div>
+            <div>
+              <p className="admin-stats-label">In Stock</p>
+              <p className="admin-stats-value">
+                {loadingProducts
+                  ? "—"
+                  : products.filter((p) => p.inStock).length}
+              </p>
+            </div>
+          </div>
+          {/* Out of Stock */}
+          <div
+            data-ocid="admin.stats.oos_card"
+            className="admin-stats-card flex items-center gap-4"
+          >
+            <div className="admin-stats-icon admin-stats-icon-oos">
+              <Package size={20} />
+            </div>
+            <div>
+              <p className="admin-stats-label">Out of Stock</p>
+              <p className="admin-stats-value">
+                {loadingProducts
+                  ? "—"
+                  : products.filter((p) => !p.inStock).length}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
         {/* ── PRODUCTS SECTION ─────────────────────────────────────────── */}
         <div>
           {/* Page title + actions */}
           <motion.div
-            className="flex items-center justify-between mb-6 gap-4"
+            className="flex items-center justify-between mb-6 gap-4 flex-wrap"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.4, delay: 0.08 }}
           >
             <div>
               <h2 className="admin-section-title text-2xl font-bold">
@@ -379,7 +495,31 @@ export function AdminDashboard() {
                   : `${products.length} product${products.length !== 1 ? "s" : ""} listed`}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* View mode toggle */}
+              <fieldset className="admin-view-toggle border-none p-0 m-0">
+                <legend className="sr-only">View mode</legend>
+                <button
+                  type="button"
+                  data-ocid="admin.products.list_toggle"
+                  className={`admin-view-toggle-btn${viewMode === "list" ? " active" : ""}`}
+                  onClick={() => setViewMode("list")}
+                  aria-label="List view"
+                  aria-pressed={viewMode === "list"}
+                >
+                  <LayoutList size={16} />
+                </button>
+                <button
+                  type="button"
+                  data-ocid="admin.products.grid_toggle"
+                  className={`admin-view-toggle-btn${viewMode === "grid" ? " active" : ""}`}
+                  onClick={() => setViewMode("grid")}
+                  aria-label="Grid view"
+                  aria-pressed={viewMode === "grid"}
+                >
+                  <LayoutGrid size={16} />
+                </button>
+              </fieldset>
               <Button
                 data-ocid="admin.products.button"
                 variant="ghost"
@@ -458,108 +598,237 @@ export function AdminDashboard() {
                   </p>
                 </div>
               </div>
+            ) : viewMode === "grid" ? (
+              /* ── GRID VIEW ─────────────────────────────────────────── */
+              <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {products.map((product, i) => (
+                  <div
+                    key={String(product.id)}
+                    data-ocid={`admin.products.row.${i + 1}`}
+                    className="admin-grid-card card-dairy-hover"
+                  >
+                    {/* Image */}
+                    <div className="relative aspect-[4/3] bg-accent/20 overflow-hidden">
+                      {productImages[String(product.id)] ? (
+                        <img
+                          src={productImages[String(product.id)]}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center admin-empty-icon">
+                          <Image
+                            size={28}
+                            className="admin-cell-meta opacity-30"
+                          />
+                        </div>
+                      )}
+                      {/* Category badge */}
+                      <div className="absolute top-2 left-2">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border backdrop-blur-sm ${product.category === "Ghee" ? "badge-ghee" : "badge-paneer"}`}
+                        >
+                          {product.category}
+                        </span>
+                      </div>
+                      {/* Stock badge */}
+                      <div className="absolute top-2 right-2">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold backdrop-blur-sm ${product.inStock ? "admin-badge-instock" : "admin-badge-oos"}`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${product.inStock ? "admin-dot-instock" : "admin-dot-oos"}`}
+                          />
+                          {product.inStock ? "In Stock" : "OOS"}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Content */}
+                    <div className="p-3">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="min-w-0">
+                          <p className="admin-cell-name font-semibold text-sm leading-tight truncate">
+                            {product.name}
+                          </p>
+                          <p className="admin-cell-meta text-xs mt-0.5">
+                            {product.weight}
+                          </p>
+                        </div>
+                        <p className="admin-cell-price font-bold text-sm font-display shrink-0">
+                          {formatINR(product.price)}
+                        </p>
+                      </div>
+                      <p className="admin-cell-desc text-xs line-clamp-2 mb-3">
+                        {product.description}
+                      </p>
+                      {/* Actions */}
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          data-ocid={`admin.products.preview_button.${i + 1}`}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open("/", "_blank")}
+                          className="admin-view-store-btn h-7 w-7 p-0 rounded-lg"
+                          aria-label={`Preview ${product.name} on store`}
+                        >
+                          <ExternalLink size={13} />
+                        </Button>
+                        <Button
+                          data-ocid={`admin.products.edit_button.${i + 1}`}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditModal(product)}
+                          className="admin-edit-btn h-7 w-7 p-0 rounded-lg"
+                          aria-label={`Edit ${product.name}`}
+                        >
+                          <Pencil size={13} />
+                        </Button>
+                        <Button
+                          data-ocid={`admin.products.delete_button.${i + 1}`}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => confirmDelete(product)}
+                          className="admin-delete-btn h-7 w-7 p-0 rounded-lg"
+                          aria-label={`Delete ${product.name}`}
+                        >
+                          <Trash2 size={13} />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* ── LIST VIEW (TABLE) ────────────────────────────────── */
               <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="admin-table-head-row">
-                      <TableHead className="admin-th pl-5 w-12">
-                        Photo
-                      </TableHead>
-                      <TableHead className="admin-th pl-3">Name</TableHead>
-                      <TableHead className="admin-th">Weight</TableHead>
-                      <TableHead className="admin-th">Category</TableHead>
-                      <TableHead className="admin-th">Price</TableHead>
-                      <TableHead className="admin-th">Stock</TableHead>
-                      <TableHead className="admin-th pr-5 text-right">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.map((product, i) => (
-                      <TableRow
-                        key={String(product.id)}
-                        data-ocid={`admin.products.row.${i + 1}`}
-                        className="admin-table-row"
-                      >
-                        <TableCell className="pl-5">
-                          {productImages[String(product.id)] ? (
-                            <img
-                              src={productImages[String(product.id)]}
-                              alt={product.name}
-                              className="w-10 h-10 rounded-lg object-cover border border-border"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg admin-empty-icon flex items-center justify-center">
-                              <Image
-                                size={16}
-                                className="admin-cell-meta opacity-40"
+                <TooltipProvider>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="admin-table-head-row">
+                        <TableHead className="admin-th pl-5 w-12">
+                          Photo
+                        </TableHead>
+                        <TableHead className="admin-th pl-3">Name</TableHead>
+                        <TableHead className="admin-th max-w-[160px]">
+                          Description
+                        </TableHead>
+                        <TableHead className="admin-th">Weight</TableHead>
+                        <TableHead className="admin-th">Category</TableHead>
+                        <TableHead className="admin-th">Price</TableHead>
+                        <TableHead className="admin-th">Stock</TableHead>
+                        <TableHead className="admin-th pr-5 text-right">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {products.map((product, i) => (
+                        <TableRow
+                          key={String(product.id)}
+                          data-ocid={`admin.products.row.${i + 1}`}
+                          className="admin-table-row"
+                        >
+                          <TableCell className="pl-5">
+                            {productImages[String(product.id)] ? (
+                              <img
+                                src={productImages[String(product.id)]}
+                                alt={product.name}
+                                className="w-10 h-10 rounded-lg object-cover border border-border"
                               />
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="pl-3">
-                          <div>
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg admin-empty-icon flex items-center justify-center">
+                                <Image
+                                  size={16}
+                                  className="admin-cell-meta opacity-40"
+                                />
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="pl-3">
                             <p className="admin-cell-name font-semibold text-sm leading-tight">
                               {product.name}
                             </p>
-                            <p className="admin-cell-desc text-xs mt-0.5 line-clamp-1 max-w-[180px]">
-                              {product.description}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="admin-cell-meta text-sm">
-                          {product.weight}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${product.category === "Ghee" ? "badge-ghee" : "badge-paneer"}`}
-                          >
-                            {product.category}
-                          </span>
-                        </TableCell>
-                        <TableCell className="admin-cell-price font-bold text-sm font-display">
-                          {formatINR(product.price)}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${product.inStock ? "admin-badge-instock" : "admin-badge-oos"}`}
-                          >
+                          </TableCell>
+                          <TableCell className="max-w-[160px]">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <p
+                                  data-ocid={`admin.products.desc_tooltip.${i + 1}`}
+                                  className="admin-cell-desc text-xs line-clamp-1 max-w-[160px] cursor-default"
+                                >
+                                  {product.description}
+                                </p>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                className="max-w-[260px] text-xs leading-relaxed"
+                              >
+                                {product.description}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell className="admin-cell-meta text-sm">
+                            {product.weight}
+                          </TableCell>
+                          <TableCell>
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${product.inStock ? "admin-dot-instock" : "admin-dot-oos"}`}
-                            />
-                            {product.inStock ? "In Stock" : "Out of Stock"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="pr-5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              data-ocid={`admin.products.edit_button.${i + 1}`}
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditModal(product)}
-                              className="admin-edit-btn h-8 w-8 p-0 rounded-lg"
-                              aria-label={`Edit ${product.name}`}
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${product.category === "Ghee" ? "badge-ghee" : "badge-paneer"}`}
                             >
-                              <Pencil size={14} />
-                            </Button>
-                            <Button
-                              data-ocid={`admin.products.delete_button.${i + 1}`}
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => confirmDelete(product)}
-                              className="admin-delete-btn h-8 w-8 p-0 rounded-lg"
-                              aria-label={`Delete ${product.name}`}
+                              {product.category}
+                            </span>
+                          </TableCell>
+                          <TableCell className="admin-cell-price font-bold text-sm font-display">
+                            {formatINR(product.price)}
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${product.inStock ? "admin-badge-instock" : "admin-badge-oos"}`}
                             >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${product.inStock ? "admin-dot-instock" : "admin-dot-oos"}`}
+                              />
+                              {product.inStock ? "In Stock" : "Out of Stock"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="pr-5 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                data-ocid={`admin.products.preview_button.${i + 1}`}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => window.open("/", "_blank")}
+                                className="admin-view-store-btn h-8 w-8 p-0 rounded-lg"
+                                aria-label={`Preview ${product.name} on store`}
+                              >
+                                <ExternalLink size={13} />
+                              </Button>
+                              <Button
+                                data-ocid={`admin.products.edit_button.${i + 1}`}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditModal(product)}
+                                className="admin-edit-btn h-8 w-8 p-0 rounded-lg"
+                                aria-label={`Edit ${product.name}`}
+                              >
+                                <Pencil size={14} />
+                              </Button>
+                              <Button
+                                data-ocid={`admin.products.delete_button.${i + 1}`}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => confirmDelete(product)}
+                                className="admin-delete-btn h-8 w-8 p-0 rounded-lg"
+                                aria-label={`Delete ${product.name}`}
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TooltipProvider>
               </div>
             )}
           </motion.div>
