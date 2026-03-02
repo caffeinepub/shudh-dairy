@@ -20,6 +20,15 @@
   font-display: swap;
 }
 
+/* Bricolage Grotesque — modern admin panel heading font */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque-VF.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --radius: 0.75rem;
@@ -137,9 +146,44 @@
     background: radial-gradient(circle, oklch(0.52 0.18 255 / 0.12) 0%, transparent 70%);
     pointer-events: none;
   }
+  /* Second glow: warm amber at bottom-right */
+  .admin-login-glow2 {
+    position: absolute;
+    bottom: -20%;
+    right: -10%;
+    width: 50%;
+    height: 50%;
+    background: radial-gradient(circle, oklch(0.52 0.14 55 / 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
   .admin-card {
     background: oklch(0.18 0.025 260);
     border: 1px solid oklch(0.28 0.04 260);
+    box-shadow: 0 32px 64px -12px oklch(0.08 0.02 260 / 0.60), 0 0 0 1px oklch(0.30 0.04 260);
+  }
+  /* Admin icon with animated spin ring */
+  .admin-icon-spin-ring {
+    position: relative;
+  }
+  .admin-icon-spin-ring::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 1rem;
+    background: conic-gradient(
+      oklch(0.52 0.18 255) 0deg,
+      oklch(0.38 0.14 255 / 0.6) 90deg,
+      oklch(0.52 0.14 55 / 0.4) 180deg,
+      oklch(0.52 0.18 255 / 0.3) 270deg,
+      oklch(0.52 0.18 255) 360deg
+    );
+    animation: spin-ring 8s linear infinite;
+    z-index: -1;
+  }
+  @keyframes spin-ring {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
   .admin-card-header {
     background: oklch(0.20 0.03 260);
@@ -220,8 +264,9 @@
     background: oklch(0.96 0.008 258);
   }
   .admin-dash-header {
-    background: oklch(0.16 0.025 258);
-    border-color: oklch(0.24 0.03 258);
+    background: linear-gradient(135deg, oklch(0.14 0.028 265) 0%, oklch(0.18 0.035 255) 100%);
+    border-bottom: 1px solid oklch(0.28 0.06 258);
+    box-shadow: 0 1px 12px oklch(0.52 0.18 255 / 0.12);
   }
   .admin-header-icon {
     background: oklch(0.52 0.18 255);
@@ -274,9 +319,10 @@
   .admin-table-card {
     background: white;
     border-color: oklch(0.88 0.02 258);
+    box-shadow: 0 2px 12px -3px oklch(0.52 0.10 258 / 0.08);
   }
   .admin-table-head-row {
-    background: oklch(0.96 0.01 258);
+    background: linear-gradient(to right, oklch(0.955 0.015 258), oklch(0.96 0.012 258));
     border-bottom: 1px solid oklch(0.88 0.02 258);
   }
   .admin-th {
@@ -286,8 +332,12 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
+  .admin-table-row:nth-child(even) {
+    background: oklch(0.978 0.006 258 / 0.5);
+  }
   .admin-table-row:hover {
-    background: oklch(0.975 0.008 258);
+    background: oklch(0.968 0.012 258);
+    box-shadow: inset 3px 0 0 oklch(0.52 0.18 255 / 0.4);
   }
   .admin-cell-name {
     color: oklch(0.20 0.04 258);
@@ -422,9 +472,10 @@
   /* Admin stats cards */
   .admin-stats-card {
     background: white;
-    border: 1px solid oklch(0.88 0.02 258);
+    border: 1px solid oklch(0.90 0.02 258);
     border-radius: 1rem;
     padding: 1.25rem 1.5rem;
+    box-shadow: 0 2px 12px -3px oklch(0.52 0.10 258 / 0.12), 0 1px 3px -1px oklch(0.20 0.04 260 / 0.06);
   }
   .admin-stats-label {
     color: oklch(0.48 0.05 258);
@@ -435,12 +486,13 @@
   }
   .admin-stats-value {
     color: oklch(0.18 0.04 258);
-    font-size: 2rem;
+    font-size: 2.25rem;
     font-weight: 800;
     line-height: 1;
   }
   .admin-stats-icon {
-    background: oklch(0.93 0.04 258);
+    background: linear-gradient(135deg, oklch(0.92 0.04 258), oklch(0.96 0.02 258));
+    box-shadow: 0 2px 8px oklch(0.52 0.10 258 / 0.15);
     color: oklch(0.48 0.10 258);
     border-radius: 0.75rem;
     padding: 0.5rem;
@@ -449,15 +501,18 @@
     justify-content: center;
   }
   .admin-stats-icon-instock {
-    background: oklch(0.93 0.06 145);
+    background: linear-gradient(135deg, oklch(0.90 0.08 145), oklch(0.95 0.04 145));
+    box-shadow: 0 2px 8px oklch(0.56 0.18 145 / 0.20);
     color: oklch(0.32 0.10 145);
   }
   .admin-stats-icon-oos {
-    background: oklch(0.93 0.04 30);
+    background: linear-gradient(135deg, oklch(0.90 0.06 30), oklch(0.95 0.03 30));
+    box-shadow: 0 2px 8px oklch(0.55 0.16 30 / 0.18);
     color: oklch(0.42 0.12 30);
   }
   .admin-stats-icon-orders {
-    background: oklch(0.93 0.06 255);
+    background: linear-gradient(135deg, oklch(0.88 0.10 255), oklch(0.94 0.06 255));
+    box-shadow: 0 2px 8px oklch(0.52 0.18 255 / 0.20);
     color: oklch(0.38 0.14 255);
   }
   .admin-badge-pending {
@@ -556,6 +611,102 @@
   .scroll-top-btn:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px oklch(0.68 0.19 62 / 0.45);
+  }
+
+  /* ── Admin Sidebar Layout ─────────────────────────────────────────────── */
+  .admin-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+  .admin-sidebar {
+    width: 220px;
+    min-height: 100vh;
+    background: oklch(0.14 0.025 260);
+    border-right: 1px solid oklch(0.22 0.03 260);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .admin-sidebar-logo {
+    padding: 0 1.25rem 1.5rem;
+    border-bottom: 1px solid oklch(0.22 0.03 260);
+    margin-bottom: 1rem;
+  }
+  .admin-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1.25rem;
+    margin: 0.15rem 0.5rem;
+    border-radius: 0.625rem;
+    color: oklch(0.58 0.06 258);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    border: none;
+    background: transparent;
+    width: calc(100% - 1rem);
+    text-align: left;
+  }
+  .admin-nav-item:hover {
+    background: oklch(0.20 0.03 260);
+    color: oklch(0.80 0.06 258);
+  }
+  .admin-nav-item.active {
+    background: oklch(0.52 0.18 255 / 0.18);
+    color: oklch(0.75 0.14 255);
+    font-weight: 600;
+  }
+  .admin-nav-item.active svg {
+    color: oklch(0.65 0.18 255);
+  }
+  .admin-content {
+    flex: 1;
+    min-width: 0;
+    background: oklch(0.96 0.008 258);
+    display: flex;
+    flex-direction: column;
+  }
+  /* Mobile nav for admin */
+  .admin-mobile-nav {
+    background: oklch(0.14 0.025 260);
+    border-color: oklch(0.22 0.03 260);
+    scrollbar-width: none;
+  }
+  .admin-mobile-nav::-webkit-scrollbar { display: none; }
+  .admin-mobile-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.875rem;
+    border-radius: 0.5rem;
+    color: oklch(0.55 0.06 258);
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .admin-mobile-nav-btn.active {
+    background: oklch(0.52 0.18 255 / 0.18);
+    color: oklch(0.72 0.14 255);
+  }
+  @media (max-width: 768px) {
+    .admin-sidebar {
+      display: none;
+    }
+    .admin-layout {
+      flex-direction: column;
+    }
   }
 
   /* Store Settings section tokens */
@@ -668,6 +819,10 @@
     font-family: "Playfair Display", Georgia, serif;
   }
 
+  .font-admin {
+    font-family: "Bricolage Grotesque", "General Sans", sans-serif;
+  }
+
   .line-clamp-1 {
     display: -webkit-box;
     -webkit-line-clamp: 1;
@@ -689,18 +844,61 @@
     overflow: hidden;
   }
 
+  /* ── Announcement bar ──────────────────────────────────────────────── */
+  .announcement-bar {
+    background: oklch(0.68 0.19 62);
+    color: white;
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    position: relative;
+    overflow: hidden;
+  }
+  .announcement-bar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, oklch(0.78 0.18 72 / 0.15) 50%, transparent 100%);
+    pointer-events: none;
+  }
+
+  /* ── Hero bottom accent ─────────────────────────────────────────────── */
+  .hero-bottom-accent {
+    height: 32px;
+    background: linear-gradient(135deg, oklch(0.68 0.19 62) 0%, oklch(0.88 0.16 72) 100%);
+    transform: skewY(-1deg);
+    transform-origin: left;
+    margin-bottom: -4px;
+  }
+
+  /* ── Footer dark theme ──────────────────────────────────────────────── */
+  .footer-dark {
+    background: oklch(0.18 0.04 48);
+  }
+  .footer-dark-text { color: oklch(0.90 0.02 80); }
+  .footer-dark-muted { color: oklch(0.60 0.04 70); }
+  .footer-dark-accent { color: oklch(0.88 0.16 72); }
+  .footer-dark-border { border-color: oklch(0.28 0.04 50); }
+  .footer-gradient-divider {
+    height: 2px;
+    background: linear-gradient(to right, transparent, oklch(0.68 0.19 62 / 0.8), transparent);
+  }
+
   /* ── FIX 2: Product card — warm glow on hover ─────────────────────────
      A subtle inner-light ring that evokes the warmth of ghee/dairy gold.
      Cannot do this purely in Tailwind without a custom utility class.
   ─────────────────────────────────────────────────────────────────────── */
   .card-dairy-hover {
-    transition: box-shadow 0.25s ease, transform 0.25s ease;
+    transition: box-shadow 0.25s ease, transform 0.25s ease, border-left 0.25s ease;
   }
   .card-dairy-hover:hover {
     box-shadow:
       0 0 0 1.5px oklch(0.68 0.19 62 / 0.35),
       0 12px 32px -6px oklch(0.68 0.19 62 / 0.18),
       0 4px 12px -3px oklch(0.18 0.04 45 / 0.10);
+    border-left: 3px solid oklch(0.68 0.19 62);
   }
 
   /* ── FIX 3: Trust bar — editorial dark strip ─────────────────────────── */

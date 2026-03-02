@@ -53,6 +53,8 @@ export function AdminLogin() {
         className="admin-login-grid-bg absolute inset-0 pointer-events-none"
         aria-hidden="true"
       />
+      {/* Bottom-right amber glow */}
+      <div className="admin-login-glow2" aria-hidden="true" />
 
       <motion.div
         className="w-full max-w-lg relative z-10"
@@ -65,7 +67,7 @@ export function AdminLogin() {
           {/* Header strip */}
           <div className="admin-card-header px-8 pt-8 pb-6 text-center">
             <motion.div
-              className="w-16 h-16 admin-icon-ring admin-icon-glow rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl shadow-lg"
+              className="relative w-16 h-16 mx-auto mb-4"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{
@@ -75,7 +77,9 @@ export function AdminLogin() {
                 stiffness: 300,
               }}
             >
-              🐄
+              <div className="admin-icon-spin-ring w-16 h-16 admin-icon-ring admin-icon-glow rounded-2xl flex items-center justify-center text-3xl shadow-lg">
+                🐄
+              </div>
             </motion.div>
             <h1 className="admin-heading text-2xl font-bold mb-1">
               SUNRISE MILK AND AGRO PRODUCT'S

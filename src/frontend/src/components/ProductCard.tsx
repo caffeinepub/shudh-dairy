@@ -88,7 +88,7 @@ export function ProductCard({ product, index, onAddToCart }: ProductCardProps) {
       whileHover={{ y: -3 }}
     >
       {/* Product image — taller aspect ratio for premium feel */}
-      <div className="relative overflow-hidden aspect-[4/3] bg-accent/30">
+      <div className="relative overflow-hidden aspect-[5/4] bg-accent/30">
         <img
           src={product.image}
           alt={product.name}

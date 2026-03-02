@@ -70,6 +70,7 @@ export default {
       fontFamily: {
         sans: ['"General Sans"', "sans-serif"],
         display: ['"Playfair Display"', "Georgia", "serif"],
+        admin: ['"Bricolage Grotesque"', '"General Sans"', "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

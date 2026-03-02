@@ -13,15 +13,19 @@ import {
   ArrowUp,
   ChevronDown,
   ClipboardList,
+  Flame,
   Leaf,
   Loader2,
   Mail,
   MapPin,
+  Package,
   Phone,
   Search,
   Shield,
   ShoppingCart,
+  Snowflake,
   Star,
+  Sun,
   Truck,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -172,12 +176,33 @@ export function StorePage() {
     });
   }, [products, activeCategory, searchQuery]);
 
+  // Category filter icon map
+  const categoryIcons: Record<string, typeof Package> = {
+    All: Package,
+    Ghee: Flame,
+    Paneer: Snowflake,
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Toaster richColors position="top-right" />
 
+      {/* ── ANNOUNCEMENT BAR ───────────────────────────────────────────────── */}
+      <div data-ocid="store.announcement_bar" className="announcement-bar">
+        🎉 Free delivery above ₹999&nbsp;&nbsp;|&nbsp;&nbsp;100% Pure
+        Dairy&nbsp;&nbsp;|&nbsp;&nbsp;Trusted by 10,000+
+        families&nbsp;&nbsp;|&nbsp;&nbsp;Farm Fresh Guaranteed
+      </div>
+
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-card/95 backdrop-blur-md border-b border-border shadow-xs">
+      <header
+        className="sticky top-0 z-30 backdrop-blur-md border-b border-border shadow-xs"
+        style={{
+          background:
+            "linear-gradient(to right, oklch(0.99 0.018 88 / 0.97), oklch(0.97 0.022 82 / 0.97))",
+          borderTop: "3px solid oklch(0.68 0.19 62)",
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           {/* Logo */}
           <motion.div
@@ -198,7 +223,7 @@ export function StorePage() {
               </div>
             )}
             <div>
-              <h1 className="font-display text-xl font-bold text-foreground leading-none tracking-tight">
+              <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground leading-none tracking-tight">
                 SUNRISE MILK AND AGRO PRODUCT'S
               </h1>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -351,6 +376,9 @@ export function StorePage() {
         </div>
       </section>
 
+      {/* ── HERO BOTTOM ACCENT ─────────────────────────────────────────────── */}
+      <div className="hero-bottom-accent" aria-hidden="true" />
+
       {/* ── TRUST BADGES — editorial dark proof bar ────────────────────────── */}
       <section className="trust-bar">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
@@ -412,35 +440,37 @@ export function StorePage() {
             Freshness you can taste, purity you can trust.
           </p>
           <div className="mt-5 flex items-center justify-center gap-3">
-            <div className="h-px w-12 bg-primary/30" />
-            <div className="flex gap-1">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-              <div className="h-1.5 w-5 rounded-full bg-primary/60" />
-              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+            <div className="h-px w-16 bg-gradient-to-r from-transparent to-primary/50" />
+            <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center">
+              <Sun size={14} className="text-primary" />
             </div>
-            <div className="h-px w-12 bg-primary/30" />
+            <div className="h-px w-16 bg-gradient-to-l from-transparent to-primary/50" />
           </div>
         </motion.div>
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 mb-8 items-start sm:items-center justify-between">
-          {/* Category tabs */}
+          {/* Category tabs with icons */}
           <div className="flex gap-2 flex-wrap">
-            {CATEGORIES.map((cat, idx) => (
-              <button
-                type="button"
-                key={cat}
-                data-ocid={`products.tab.${idx + 1}`}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-150 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 active:scale-95 ${
-                  activeCategory === cat
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-card text-foreground border-border hover:border-primary hover:text-primary"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+            {CATEGORIES.map((cat, idx) => {
+              const CatIcon = categoryIcons[cat] ?? Package;
+              return (
+                <button
+                  type="button"
+                  key={cat}
+                  data-ocid={`products.tab.${idx + 1}`}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-150 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 active:scale-95 ${
+                    activeCategory === cat
+                      ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/25"
+                      : "bg-card text-foreground border-border hover:border-primary hover:text-primary hover:shadow-sm"
+                  }`}
+                >
+                  <CatIcon size={13} />
+                  {cat}
+                </button>
+              );
+            })}
           </div>
 
           {/* Search */}
@@ -520,23 +550,29 @@ export function StorePage() {
       <FounderSection />
 
       {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border bg-card mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
+      <footer className="footer-dark mt-8">
+        {/* Gradient top divider */}
+        <div className="footer-gradient-divider" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 mb-10">
             {/* Brand */}
             <div>
-              <div className="flex items-center gap-2.5 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-base">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-xl shrink-0"
+                  style={{ background: "oklch(0.26 0.06 48)" }}
+                >
                   🐄
                 </div>
-                <span className="font-display text-lg font-bold text-foreground">
+                <span className="font-display text-base font-bold footer-dark-text leading-tight">
                   SUNRISE MILK AND AGRO PRODUCT'S
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-sm footer-dark-muted leading-relaxed mb-2">
                 Pure | Fresh | Delivered
               </p>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              <p className="text-sm footer-dark-muted leading-relaxed">
                 Bringing the goodness of farm-fresh dairy straight to your
                 kitchen since 2018.
               </p>
@@ -544,10 +580,10 @@ export function StorePage() {
 
             {/* Quick Links */}
             <div>
-              <h3 className="font-semibold text-foreground mb-3 text-sm">
+              <h3 className="font-semibold footer-dark-accent mb-4 text-sm tracking-wider uppercase">
                 Quick Links
               </h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-2.5 text-sm footer-dark-muted">
                 <li>
                   <button
                     type="button"
@@ -556,7 +592,13 @@ export function StorePage() {
                         .getElementById("products")
                         ?.scrollIntoView({ behavior: "smooth" })
                     }
-                    className="hover:text-primary transition-colors"
+                    className="footer-dark-muted hover:footer-dark-accent transition-colors"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
                   >
                     All Products
                   </button>
@@ -565,7 +607,13 @@ export function StorePage() {
                   <button
                     type="button"
                     onClick={() => setActiveCategory("Ghee")}
-                    className="hover:text-primary transition-colors"
+                    className="footer-dark-muted transition-colors"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
                   >
                     Ghee Collection
                   </button>
@@ -574,7 +622,13 @@ export function StorePage() {
                   <button
                     type="button"
                     onClick={() => setActiveCategory("Paneer")}
-                    className="hover:text-primary transition-colors"
+                    className="footer-dark-muted transition-colors"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
                   >
                     Paneer Range
                   </button>
@@ -583,11 +637,13 @@ export function StorePage() {
                   <a
                     href="/track-order"
                     data-ocid="footer.track_order.link"
-                    className="hover:text-primary transition-colors flex items-center gap-1.5 font-medium text-foreground/80"
+                    className="footer-dark-text flex items-center gap-1.5 font-medium transition-colors"
+                    style={{ textDecoration: "none" }}
                   >
                     <ClipboardList
                       size={13}
-                      className="text-primary shrink-0"
+                      className="footer-dark-accent shrink-0"
+                      style={{ color: "oklch(0.88 0.16 72)" }}
                     />
                     My Orders / Track Order
                   </a>
@@ -597,31 +653,48 @@ export function StorePage() {
 
             {/* Contact */}
             <div>
-              <h3 className="font-semibold text-foreground mb-3 text-sm">
-                Contact
+              <h3
+                className="font-semibold footer-dark-accent mb-4 text-sm tracking-wider uppercase"
+                style={{ color: "oklch(0.88 0.16 72)" }}
+              >
+                Contact Us
               </h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <Mail size={14} className="text-primary shrink-0" />
+              <ul className="space-y-3 text-sm footer-dark-muted">
+                <li className="flex items-center gap-2.5">
+                  <Mail
+                    size={14}
+                    className="shrink-0"
+                    style={{ color: "oklch(0.88 0.16 72)" }}
+                  />
                   <a
                     href="mailto:sunrisemilkandagroproducts@gmail.com"
-                    className="hover:text-primary transition-colors break-all"
+                    className="footer-dark-muted transition-colors break-all hover:underline"
+                    style={{ color: "oklch(0.60 0.04 70)" }}
                   >
                     sunrisemilkandagroproducts@gmail.com
                   </a>
                 </li>
-                <li className="flex items-center gap-2">
-                  <Phone size={14} className="text-primary shrink-0" />
+                <li className="flex items-center gap-2.5">
+                  <Phone
+                    size={14}
+                    className="shrink-0"
+                    style={{ color: "oklch(0.88 0.16 72)" }}
+                  />
                   <a
                     href="tel:8875759738"
-                    className="hover:text-primary transition-colors"
+                    className="transition-colors"
+                    style={{ color: "oklch(0.60 0.04 70)" }}
                   >
                     8875759738
                   </a>
                 </li>
-                <li className="flex items-start gap-2">
-                  <MapPin size={14} className="text-primary shrink-0 mt-0.5" />
-                  <span>
+                <li className="flex items-start gap-2.5">
+                  <MapPin
+                    size={14}
+                    className="shrink-0 mt-0.5"
+                    style={{ color: "oklch(0.88 0.16 72)" }}
+                  />
+                  <span style={{ color: "oklch(0.60 0.04 70)" }}>
                     Shop No. 1, Patel House, Near Mewar Hospital, Bhuwana, Dist.
                     Udaipur, Rajasthan - 313001
                   </span>
@@ -630,12 +703,57 @@ export function StorePage() {
             </div>
           </div>
 
+          {/* Social icons row */}
+          <div className="flex justify-center gap-3 mb-8">
+            <a
+              href="mailto:sunrisemilkandagroproducts@gmail.com"
+              aria-label="Email us"
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150"
+              style={{
+                background: "oklch(0.26 0.04 48)",
+                color: "oklch(0.88 0.16 72)",
+              }}
+            >
+              <Mail size={15} />
+            </a>
+            <a
+              href="tel:8875759738"
+              aria-label="Call us"
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150"
+              style={{
+                background: "oklch(0.26 0.04 48)",
+                color: "oklch(0.88 0.16 72)",
+              }}
+            >
+              <Phone size={15} />
+            </a>
+            <a
+              href="https://maps.google.com/?q=Shop+No+1+Patel+House+Near+Mewar+Hospital+Bhuwana+Udaipur"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Find us on map"
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150"
+              style={{
+                background: "oklch(0.26 0.04 48)",
+                color: "oklch(0.88 0.16 72)",
+              }}
+            >
+              <MapPin size={15} />
+            </a>
+          </div>
+
           {/* Bottom bar */}
-          <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+          <div
+            className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm"
+            style={{
+              borderColor: "oklch(0.28 0.04 50)",
+              color: "oklch(0.48 0.03 62)",
+            }}
+          >
             <span>
               © {new Date().getFullYear()} SUNRISE MILK AND AGRO PRODUCT'S.
               Built with{" "}
-              <span className="text-primary" aria-label="love">
+              <span style={{ color: "oklch(0.88 0.16 72)" }} aria-label="love">
                 ♥
               </span>{" "}
               using{" "}
@@ -643,7 +761,8 @@ export function StorePage() {
                 href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline underline-offset-2 hover:text-primary transition-colors"
+                className="underline underline-offset-2 transition-colors"
+                style={{ color: "oklch(0.70 0.08 72)" }}
               >
                 caffeine.ai
               </a>
@@ -653,7 +772,13 @@ export function StorePage() {
                 type="button"
                 data-ocid="footer.scroll_top_button"
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                className="text-xs text-muted-foreground/70 hover:text-primary transition-colors flex items-center gap-1"
+                className="text-xs transition-colors flex items-center gap-1"
+                style={{
+                  color: "oklch(0.48 0.03 62)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
               >
                 <ArrowUp size={12} />
                 Back to Top
@@ -661,7 +786,8 @@ export function StorePage() {
               <a
                 href="/admin"
                 data-ocid="footer.admin.link"
-                className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                className="text-xs transition-colors"
+                style={{ color: "oklch(0.40 0.03 62)" }}
               >
                 Admin
               </a>
