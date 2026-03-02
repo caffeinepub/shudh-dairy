@@ -1,0 +1,460 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Playfair Display — display serif for headings */
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/assets/fonts/PlayfairDisplay-VF.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* General Sans — clean humanist sans for body */
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans-Variable.woff2") format("woff2");
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* ── FIX 1: Premium Indian dairy palette ──────────────────────────────
+       Direction: warm parchment base + deep saffron-gold primary +
+       terracotta accent. Think "heritage Rajasthani brand", not "web app."
+       Contrast verified AA+ on all text/bg combinations.
+    ─────────────────────────────────────────────────────────────────────── */
+
+    /* Warm parchment — aged paper, not clinical white */
+    --background: 0.965 0.022 88;
+    --foreground: 0.18 0.04 45;
+
+    /* Ivory card — slightly lighter than bg, with warmth */
+    --card: 0.985 0.012 86;
+    --card-foreground: 0.18 0.04 45;
+
+    --popover: 0.985 0.012 86;
+    --popover-foreground: 0.18 0.04 45;
+
+    /* Deep saffron-gold primary — rich, saturated, unmistakably Indian */
+    --primary: 0.68 0.19 62;
+    --primary-foreground: 0.99 0.005 90;
+
+    /* Warm sand secondary */
+    --secondary: 0.92 0.028 82;
+    --secondary-foreground: 0.32 0.04 55;
+
+    /* Muted warm grey */
+    --muted: 0.93 0.018 80;
+    --muted-foreground: 0.48 0.03 60;
+
+    /* Saffron-cream accent — for trust badge backgrounds */
+    --accent: 0.94 0.055 78;
+    --accent-foreground: 0.38 0.12 55;
+
+    /* Terracotta destructive — earthy not garish */
+    --destructive: 0.55 0.22 30;
+    --destructive-foreground: 0.99 0.005 90;
+
+    /* Warm border — visible but not harsh */
+    --border: 0.86 0.025 76;
+    --input: 0.86 0.025 76;
+    --ring: 0.68 0.19 62;
+
+    /* ── Category badge tokens ──────────────────────────────────────────── */
+    --badge-ghee-bg: 0.94 0.08 72;
+    --badge-ghee-fg: 0.38 0.14 52;
+    --badge-paneer-bg: 0.93 0.06 145;
+    --badge-paneer-fg: 0.32 0.10 145;
+    --badge-combo-bg: 0.92 0.09 48;
+    --badge-combo-fg: 0.38 0.14 42;
+
+    /* ── Trust bar token ────────────────────────────────────────────────── */
+    --trust-bar: 0.36 0.08 48;
+    --trust-bar-fg: 0.97 0.014 82;
+
+    --chart-1: 0.68 0.19 62;
+    --chart-2: 0.62 0.16 145;
+    --chart-3: 0.55 0.14 30;
+    --chart-4: 0.76 0.14 88;
+    --chart-5: 0.80 0.18 75;
+
+    --sidebar: 0.965 0.022 88;
+    --sidebar-foreground: 0.18 0.04 45;
+    --sidebar-primary: 0.68 0.19 62;
+    --sidebar-primary-foreground: 0.99 0.005 90;
+    --sidebar-accent: 0.93 0.025 80;
+    --sidebar-accent-foreground: 0.32 0.04 55;
+    --sidebar-border: 0.86 0.025 76;
+    --sidebar-ring: 0.68 0.19 62;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "General Sans", sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer base {
+  /* ── Admin panel design tokens ────────────────────────────────────────────
+     Intentionally dark/professional — distinct from the warm store palette.
+     Direction: slate-indigo admin system, clean & authoritative.
+  ─────────────────────────────────────────────────────────────────────────── */
+  .admin-login-bg {
+    background: oklch(0.14 0.025 260);
+    position: relative;
+    overflow: hidden;
+  }
+  .admin-login-grid-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(oklch(0.30 0.04 260 / 0.15) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.30 0.04 260 / 0.15) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .admin-login-bg::after {
+    content: "";
+    position: absolute;
+    top: -30%;
+    left: -10%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(circle, oklch(0.52 0.18 255 / 0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .admin-card {
+    background: oklch(0.18 0.025 260);
+    border: 1px solid oklch(0.28 0.04 260);
+  }
+  .admin-card-header {
+    background: oklch(0.20 0.03 260);
+    border-bottom: 1px solid oklch(0.28 0.04 260);
+  }
+  .admin-icon-ring {
+    background: oklch(0.25 0.08 255);
+    border: 1px solid oklch(0.38 0.10 255);
+  }
+  .admin-heading {
+    color: oklch(0.96 0.01 260);
+  }
+  .admin-sub {
+    color: oklch(0.55 0.08 255);
+    letter-spacing: 0.12em;
+  }
+  .admin-label {
+    color: oklch(0.62 0.06 255);
+  }
+  .admin-input-icon {
+    color: oklch(0.50 0.07 255);
+  }
+  .admin-input {
+    background: oklch(0.22 0.03 260) !important;
+    border-color: oklch(0.30 0.04 260) !important;
+    color: oklch(0.94 0.01 260) !important;
+  }
+  .admin-input::placeholder {
+    color: oklch(0.44 0.04 260) !important;
+  }
+  .admin-input:focus-visible {
+    border-color: oklch(0.58 0.18 255) !important;
+    ring-color: oklch(0.58 0.18 255 / 0.3) !important;
+  }
+  .admin-error {
+    background: oklch(0.22 0.08 30);
+    border: 1px solid oklch(0.35 0.12 30);
+    color: oklch(0.80 0.10 30);
+  }
+  .admin-submit-btn {
+    background: oklch(0.52 0.18 255) !important;
+    color: oklch(0.99 0.005 260) !important;
+    border: none !important;
+  }
+  .admin-submit-btn:hover:not(:disabled) {
+    background: oklch(0.58 0.20 255) !important;
+  }
+  .admin-hint-divider {
+    border-color: oklch(0.28 0.04 260);
+  }
+  .admin-hint {
+    color: oklch(0.42 0.05 255);
+  }
+  .admin-hint-code {
+    background: oklch(0.24 0.04 260);
+    color: oklch(0.72 0.12 255);
+  }
+  .admin-back-link {
+    color: oklch(0.52 0.08 255);
+  }
+
+  /* Dashboard tokens */
+  .admin-dash-bg {
+    background: oklch(0.96 0.008 258);
+  }
+  .admin-dash-header {
+    background: oklch(0.16 0.025 258);
+    border-color: oklch(0.24 0.03 258);
+  }
+  .admin-header-icon {
+    background: oklch(0.52 0.18 255);
+    color: white;
+  }
+  .admin-dash-title {
+    color: oklch(0.97 0.008 260);
+  }
+  .admin-dash-subtitle {
+    color: oklch(0.55 0.08 255);
+  }
+  .admin-user-badge {
+    background: oklch(0.24 0.04 258);
+    color: oklch(0.70 0.10 255);
+  }
+  .admin-user-dot {
+    background: oklch(0.68 0.18 145);
+  }
+  .admin-logout-btn {
+    color: oklch(0.60 0.08 255) !important;
+  }
+  .admin-logout-btn:hover {
+    color: oklch(0.80 0.05 260) !important;
+    background: oklch(0.22 0.03 258) !important;
+  }
+  .admin-section-title {
+    color: oklch(0.18 0.04 258);
+  }
+  .admin-section-sub {
+    color: oklch(0.48 0.05 258);
+  }
+  .admin-refresh-btn {
+    color: oklch(0.48 0.06 255) !important;
+  }
+  .admin-add-btn {
+    background: oklch(0.52 0.18 255) !important;
+    color: white !important;
+  }
+  .admin-add-btn:hover {
+    background: oklch(0.58 0.20 255) !important;
+  }
+  .admin-table-card {
+    background: white;
+    border-color: oklch(0.88 0.02 258);
+  }
+  .admin-table-head-row {
+    background: oklch(0.96 0.01 258);
+    border-bottom: 1px solid oklch(0.88 0.02 258);
+  }
+  .admin-th {
+    color: oklch(0.40 0.05 258);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .admin-table-row:hover {
+    background: oklch(0.975 0.008 258);
+  }
+  .admin-cell-name {
+    color: oklch(0.20 0.04 258);
+  }
+  .admin-cell-desc {
+    color: oklch(0.52 0.04 258);
+  }
+  .admin-cell-meta {
+    color: oklch(0.44 0.04 258);
+  }
+  .admin-cell-price {
+    color: oklch(0.18 0.04 258);
+  }
+  .admin-badge-instock {
+    background: oklch(0.93 0.06 145);
+    color: oklch(0.32 0.10 145);
+  }
+  .admin-badge-oos {
+    background: oklch(0.93 0.04 30);
+    color: oklch(0.42 0.12 30);
+  }
+  .admin-dot-instock {
+    background: oklch(0.56 0.18 145);
+  }
+  .admin-dot-oos {
+    background: oklch(0.56 0.16 30);
+  }
+  .admin-edit-btn {
+    color: oklch(0.48 0.10 255) !important;
+  }
+  .admin-edit-btn:hover {
+    background: oklch(0.92 0.04 255) !important;
+    color: oklch(0.38 0.14 255) !important;
+  }
+  .admin-delete-btn {
+    color: oklch(0.55 0.10 30) !important;
+  }
+  .admin-delete-btn:hover {
+    background: oklch(0.94 0.04 30) !important;
+    color: oklch(0.42 0.16 30) !important;
+  }
+  .admin-spinner {
+    color: oklch(0.52 0.18 255);
+  }
+  .admin-error-text {
+    color: oklch(0.42 0.12 30);
+  }
+  .admin-retry-btn {
+    color: oklch(0.48 0.10 255) !important;
+    border-color: oklch(0.78 0.06 255) !important;
+  }
+  .admin-empty-icon {
+    background: oklch(0.93 0.04 258);
+  }
+
+  /* Modal tokens */
+  .admin-modal {
+    background: white !important;
+    border-color: oklch(0.88 0.02 258) !important;
+  }
+  .admin-modal-title {
+    color: oklch(0.16 0.04 258);
+  }
+  .admin-modal-desc {
+    color: oklch(0.50 0.05 258);
+  }
+  .admin-modal-input {
+    border-color: oklch(0.84 0.03 258) !important;
+    color: oklch(0.18 0.04 258) !important;
+  }
+  .admin-modal-input:focus-visible {
+    border-color: oklch(0.52 0.18 255) !important;
+  }
+  .admin-select-content {
+    background: white !important;
+    border-color: oklch(0.84 0.03 258) !important;
+  }
+  .admin-switch {
+    background: oklch(0.84 0.03 258) !important;
+  }
+  .admin-field-error {
+    color: oklch(0.52 0.16 30);
+  }
+  .admin-cancel-btn {
+    color: oklch(0.48 0.05 258) !important;
+  }
+  .admin-save-btn {
+    background: oklch(0.52 0.18 255) !important;
+    color: white !important;
+  }
+  .admin-save-btn:hover:not(:disabled) {
+    background: oklch(0.58 0.20 255) !important;
+  }
+  .admin-delete-confirm-btn {
+    background: oklch(0.52 0.16 30) !important;
+    color: white !important;
+  }
+  .admin-delete-confirm-btn:hover:not(:disabled) {
+    background: oklch(0.44 0.18 30) !important;
+  }
+  .admin-highlight {
+    color: oklch(0.20 0.06 258);
+  }
+
+  /* Store Settings section tokens */
+  .admin-settings-border {
+    border-color: oklch(0.84 0.03 258);
+  }
+  .admin-settings-divider {
+    border-color: oklch(0.90 0.02 258);
+  }
+  .admin-color-picker {
+    background: white;
+    cursor: pointer;
+  }
+  .admin-color-picker::-webkit-color-swatch-wrapper {
+    padding: 2px;
+  }
+  .admin-color-picker::-webkit-color-swatch {
+    border: none;
+    border-radius: 6px;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Playfair Display", Georgia, serif;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ── FIX 2: Product card — warm glow on hover ─────────────────────────
+     A subtle inner-light ring that evokes the warmth of ghee/dairy gold.
+     Cannot do this purely in Tailwind without a custom utility class.
+  ─────────────────────────────────────────────────────────────────────── */
+  .card-dairy-hover {
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+  }
+  .card-dairy-hover:hover {
+    box-shadow:
+      0 0 0 1.5px oklch(0.68 0.19 62 / 0.35),
+      0 12px 32px -6px oklch(0.68 0.19 62 / 0.18),
+      0 4px 12px -3px oklch(0.18 0.04 45 / 0.10);
+  }
+
+  /* ── FIX 3: Trust bar — editorial dark strip ─────────────────────────── */
+  .trust-bar {
+    background: oklch(var(--trust-bar));
+  }
+  .trust-bar-text {
+    color: oklch(var(--trust-bar-fg));
+  }
+  .trust-bar-icon-wrap {
+    background: oklch(0.68 0.19 62 / 0.22);
+    border: 1px solid oklch(0.68 0.19 62 / 0.40);
+  }
+  .trust-bar-icon {
+    color: oklch(0.88 0.16 72);
+  }
+  .trust-bar-divider {
+    background: oklch(var(--trust-bar-fg) / 0.12);
+  }
+
+  /* ── Category badge tokens (token-based, not hardcoded Tailwind) ────── */
+  .badge-ghee {
+    background: oklch(var(--badge-ghee-bg));
+    color: oklch(var(--badge-ghee-fg));
+    border-color: oklch(var(--badge-ghee-bg) / 0.6);
+  }
+  .badge-paneer {
+    background: oklch(var(--badge-paneer-bg));
+    color: oklch(var(--badge-paneer-fg));
+    border-color: oklch(var(--badge-paneer-bg) / 0.6);
+  }
+  .badge-combo {
+    background: oklch(var(--badge-combo-bg));
+    color: oklch(var(--badge-combo-fg));
+    border-color: oklch(var(--badge-combo-bg) / 0.6);
+  }
+}
