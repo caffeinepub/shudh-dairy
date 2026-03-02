@@ -311,7 +311,7 @@ export function StorePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.18, duration: 0.6, ease: "easeOut" }}
             >
-              Pure Dairy,
+              Shree Nath Dairy,
               <br />
               <span style={{ color: "oklch(0.88 0.16 72)" }}>
                 Delivered Fresh
