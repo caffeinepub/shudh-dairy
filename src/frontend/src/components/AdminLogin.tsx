@@ -1,95 +1,50 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createActorWithConfig } from "@/config";
-import { useActor } from "@/hooks/useActor";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  RefreshCw,
-  User,
-  Wifi,
-} from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, User } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 
+// Credentials are checked locally — no backend connection needed for login
+const ADMIN_USERNAME = "admin";
+const ADMIN_PASSWORD = "sunrise2024";
+
 export function AdminLogin() {
   const navigate = useNavigate();
-  const { actor } = useActor();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
 
-  const performLogin = async (
-    currentActor: NonNullable<typeof actor>,
-    user: string,
-    pass: string,
-  ) => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const success = await currentActor.adminLogin(user, pass);
-      if (success) {
-        const token = `admin_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        localStorage.setItem("adminToken", token);
-        localStorage.setItem("adminUser", user);
-        navigate({ to: "/admin/dashboard" });
-      } else {
-        setError(
-          "Invalid credentials. Please check your username and password.",
-        );
-      }
-    } catch {
-      setError("Connection error. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       setError("Please enter both username and password.");
       return;
     }
 
+    setIsLoading(true);
     setError("");
 
-    if (actor) {
-      // Actor already available — log in immediately
-      await performLogin(actor, username, password);
-      return;
-    }
-
-    // Actor not ready — try to create it directly with a 20-second timeout
-    setIsConnecting(true);
-    try {
-      const actorPromise = createActorWithConfig();
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 20_000),
-      );
-
-      const freshActor = await Promise.race([actorPromise, timeoutPromise]);
-      setIsConnecting(false);
-      await performLogin(freshActor, username, password);
-    } catch (err) {
-      setIsConnecting(false);
-      const isTimeout = err instanceof Error && err.message === "timeout";
-      setError(
-        isTimeout
-          ? "Server is taking too long to respond — please refresh the page and try again."
-          : "Could not connect to the server. Please refresh the page and try again.",
-      );
-    }
+    // Small delay for UX feedback, then validate locally
+    setTimeout(() => {
+      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        const token = `admin_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        localStorage.setItem("adminToken", token);
+        localStorage.setItem("adminUser", username);
+        navigate({ to: "/admin/dashboard" });
+      } else {
+        setError(
+          "Invalid credentials. Please check your username and password.",
+        );
+        setIsLoading(false);
+      }
+    }, 400);
   };
 
-  const busy = isLoading || isConnecting;
+  const busy = isLoading;
 
   return (
     <div className="admin-login-bg min-h-screen flex items-center justify-center px-4">
@@ -129,31 +84,6 @@ export function AdminLogin() {
               Admin Portal
             </p>
           </div>
-
-          {/* Connecting banner */}
-          {isConnecting && (
-            <motion.div
-              data-ocid="admin.login.loading_state"
-              className="mx-8 mb-2 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Loader2 size={14} className="animate-spin shrink-0" />
-              <span>Connecting to server, please wait…</span>
-            </motion.div>
-          )}
-
-          {/* Ready notice when actor is available */}
-          {!isConnecting && actor && (
-            <motion.div
-              className="mx-8 mb-2 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Wifi size={14} className="shrink-0" />
-              <span>Ready — enter your credentials to sign in.</span>
-            </motion.div>
-          )}
 
           {/* Form */}
           <div className="px-8 pb-8 pt-2">
@@ -237,17 +167,6 @@ export function AdminLogin() {
                   transition={{ duration: 0.25 }}
                 >
                   <p>{error}</p>
-                  {(error.toLowerCase().includes("refresh") ||
-                    error.toLowerCase().includes("starting up")) && (
-                    <button
-                      type="button"
-                      onClick={() => window.location.reload()}
-                      className="mt-2 flex items-center gap-1.5 text-xs font-semibold underline underline-offset-2 hover:no-underline"
-                    >
-                      <RefreshCw size={12} />
-                      Refresh page
-                    </button>
-                  )}
                 </motion.div>
               )}
 
@@ -262,11 +181,6 @@ export function AdminLogin() {
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Signing in…
-                  </>
-                ) : isConnecting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connecting…
                   </>
                 ) : (
                   "Sign In to Admin Panel"

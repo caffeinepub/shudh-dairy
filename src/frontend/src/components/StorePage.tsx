@@ -110,6 +110,17 @@ const STATIC_PRODUCTS: DairyProduct[] = [
   },
 ];
 
+// ─── Per-product default images (based on id) ─────────────────────────────────
+const PRODUCT_ID_IMAGES: Record<string, string> = {
+  "1": "/assets/generated/ghee-cow.dim_600x600.jpg",
+  "2": "/assets/generated/ghee-cow.dim_600x600.jpg",
+  "3": "/assets/generated/ghee-a2.dim_600x600.jpg",
+  "4": "/assets/generated/ghee-buffalo.dim_600x600.jpg",
+  "5": "/assets/generated/paneer-fresh.dim_600x600.jpg",
+  "6": "/assets/generated/paneer-fresh.dim_600x600.jpg",
+  "7": "/assets/generated/paneer-smoked.dim_600x600.jpg",
+};
+
 // ─── Map backend product to DairyProduct ──────────────────────────────────────
 function mapBackendProduct(
   p: BackendProduct,
@@ -119,8 +130,9 @@ function mapBackendProduct(
     Ghee: "/assets/generated/ghee-cow.dim_600x600.jpg",
     Paneer: "/assets/generated/paneer-fresh.dim_600x600.jpg",
   };
-  // Use custom uploaded image if available, otherwise fall back to category default
+  // Priority: custom uploaded > per-product default > category default
   const customImage = productImages[String(p.id)];
+  const idImage = PRODUCT_ID_IMAGES[String(p.id)];
   return {
     id: Number(p.id),
     name: p.name,
@@ -131,6 +143,7 @@ function mapBackendProduct(
     inStock: p.inStock,
     image:
       customImage ??
+      idImage ??
       categoryMap[p.category] ??
       "/assets/generated/ghee-cow.dim_600x600.jpg",
   };
@@ -161,11 +174,11 @@ export function StorePage() {
   // ── Backend products state ─────────────────────────────────────────────────
   const { actor, isFetching: actorLoading } = useActor();
   const [products, setProducts] = useState<DairyProduct[]>(() => {
-    // Pre-apply custom images to static products on first load
+    // Pre-apply custom images to static products on first load, then id-based defaults, then original
     const images = getProductImages();
     return STATIC_PRODUCTS.map((p) => ({
       ...p,
-      image: images[String(p.id)] ?? p.image,
+      image: images[String(p.id)] ?? PRODUCT_ID_IMAGES[String(p.id)] ?? p.image,
     }));
   });
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -753,6 +766,10 @@ export function StorePage() {
         products={products}
         onUpdateQuantity={updateQuantity}
         onRemove={removeFromCart}
+        onOrderPlaced={() => {
+          setCartItems([]);
+          setIsCartOpen(false);
+        }}
       />
     </div>
   );

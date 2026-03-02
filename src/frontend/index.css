@@ -456,6 +456,24 @@
     background: oklch(0.93 0.04 30);
     color: oklch(0.42 0.12 30);
   }
+  .admin-stats-icon-orders {
+    background: oklch(0.93 0.06 255);
+    color: oklch(0.38 0.14 255);
+  }
+  .admin-badge-pending {
+    background: oklch(0.95 0.08 78);
+    color: oklch(0.40 0.14 62);
+  }
+  .admin-dot-pending {
+    background: oklch(0.65 0.18 72);
+  }
+  .admin-badge-confirmed {
+    background: oklch(0.92 0.06 255);
+    color: oklch(0.32 0.14 255);
+  }
+  .admin-dot-confirmed {
+    background: oklch(0.52 0.18 255);
+  }
 
   /* Admin view store button */
   .admin-view-store-btn {

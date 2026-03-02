@@ -36,6 +36,11 @@ import {
 } from "@/components/ui/tooltip";
 import { useActor } from "@/hooks/useActor";
 import {
+  type Order,
+  getAllOrders,
+  updateOrderStatus,
+} from "@/utils/orderStorage";
+import {
   type StoreTheme,
   applyTheme,
   fileToDataUrl,
@@ -59,6 +64,7 @@ import {
   Palette,
   Pencil,
   RefreshCw,
+  ShoppingBag,
   Store,
   Trash2,
   Upload,
@@ -87,6 +93,90 @@ const emptyForm: ProductFormData = {
   imageUrl: "",
 };
 
+// ── Static fallback products (shown while backend loads) ────────────────────
+const STATIC_FALLBACK: Product[] = [
+  {
+    id: BigInt(1),
+    name: "Pure Cow Ghee",
+    description:
+      "Farm fresh pure cow ghee made from cultured butter. Rich aroma and golden colour.",
+    price: 899,
+    category: "Ghee",
+    weight: "500g",
+    inStock: true,
+  },
+  {
+    id: BigInt(2),
+    name: "Pure Cow Ghee",
+    description:
+      "Farm fresh pure cow ghee made from cultured butter. Rich aroma and golden colour.",
+    price: 1799,
+    category: "Ghee",
+    weight: "1kg",
+    inStock: true,
+  },
+  {
+    id: BigInt(3),
+    name: "A2 Desi Ghee",
+    description:
+      "Premium A2 ghee from Gir cow milk. Prepared using traditional bilona method.",
+    price: 1100,
+    category: "Ghee",
+    weight: "500g",
+    inStock: true,
+  },
+  {
+    id: BigInt(4),
+    name: "Buffalo Ghee",
+    description:
+      "Pure buffalo ghee with a rich, creamy texture. Ideal for cooking and sweets.",
+    price: 649,
+    category: "Ghee",
+    weight: "500g",
+    inStock: true,
+  },
+  {
+    id: BigInt(5),
+    name: "Fresh Paneer",
+    description:
+      "Soft and fresh homestyle paneer. Made daily from full-fat cow milk.",
+    price: 89,
+    category: "Paneer",
+    weight: "200g",
+    inStock: true,
+  },
+  {
+    id: BigInt(6),
+    name: "Fresh Paneer",
+    description:
+      "Soft and fresh homestyle paneer. Made daily from full-fat cow milk.",
+    price: 199,
+    category: "Paneer",
+    weight: "500g",
+    inStock: true,
+  },
+  {
+    id: BigInt(7),
+    name: "Smoked Paneer",
+    description:
+      "Traditionally smoked paneer with a subtle earthy flavour. Perfect for grilling and curries.",
+    price: 149,
+    category: "Paneer",
+    weight: "200g",
+    inStock: true,
+  },
+];
+
+const STATIC_IMAGES: Record<string, string> = {
+  "1": "/assets/generated/ghee-cow.dim_600x600.jpg",
+  "2": "/assets/generated/ghee-cow.dim_600x600.jpg",
+  "3": "/assets/generated/ghee-a2.dim_600x600.jpg",
+  "4": "/assets/generated/ghee-buffalo.dim_600x600.jpg",
+  "5": "/assets/generated/paneer-fresh.dim_600x600.jpg",
+  "6": "/assets/generated/paneer-fresh.dim_600x600.jpg",
+  "7": "/assets/generated/paneer-smoked.dim_600x600.jpg",
+};
+
 export function AdminDashboard() {
   const navigate = useNavigate();
   const { actor, isFetching: actorLoading } = useActor();
@@ -102,11 +192,11 @@ export function AdminDashboard() {
   }, [token, navigate]);
 
   // ── Product list state ─────────────────────────────────────────────────────
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(STATIC_FALLBACK);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [productImages, setProductImages] = useState<Record<string, string>>(
-    () => getProductImages(),
+    () => ({ ...STATIC_IMAGES, ...getProductImages() }),
   );
 
   const loadProducts = useCallback(async () => {
@@ -115,15 +205,27 @@ export function AdminDashboard() {
     setLoadError(false);
     try {
       const data = await actor.getAllProducts();
-      setProducts(data);
-      setProductImages(getProductImages());
+      if (data.length > 0) {
+        setProducts(data);
+      } else {
+        setProducts(STATIC_FALLBACK);
+      }
+      setProductImages({ ...STATIC_IMAGES, ...getProductImages() });
     } catch {
-      setLoadError(true);
-      toast.error("Failed to load products");
+      // Keep showing static products on error
+      setProducts(STATIC_FALLBACK);
+      setProductImages({ ...STATIC_IMAGES, ...getProductImages() });
+      setLoadError(false);
+      toast.error("Could not sync with server, showing local products");
     } finally {
       setLoadingProducts(false);
     }
   }, [actor]);
+
+  // Show static products immediately while waiting for backend
+  useEffect(() => {
+    setLoadingProducts(false);
+  }, []);
 
   useEffect(() => {
     if (token && actor && !actorLoading) loadProducts();
@@ -240,8 +342,8 @@ export function AdminDashboard() {
         if (newProduct && formData.imageUrl) {
           setProductImage(String(newProduct.id), formData.imageUrl);
         }
-        setProducts(allProducts);
-        setProductImages(getProductImages());
+        setProducts(allProducts.length > 0 ? allProducts : STATIC_FALLBACK);
+        setProductImages({ ...STATIC_IMAGES, ...getProductImages() });
         toast.success("Product added successfully");
       }
       setModalOpen(false);
@@ -329,6 +431,32 @@ export function AdminDashboard() {
       currency: "INR",
       maximumFractionDigits: 0,
     }).format(amount);
+
+  // ── Orders state ──────────────────────────────────────────────────────────
+  const [orders, setOrders] = useState<Order[]>(() => getAllOrders());
+
+  const refreshOrders = () => {
+    setOrders(getAllOrders());
+  };
+
+  const handleOrderStatusChange = (
+    orderId: number,
+    status: Order["status"],
+  ) => {
+    updateOrderStatus(orderId, status);
+    refreshOrders();
+    toast.success(`Order #${orderId} marked as ${status}`);
+  };
+
+  const formatDate = (timestamp: number) => {
+    const d = new Date(timestamp);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+  };
 
   // Show a connecting overlay while actor isn't ready yet
   const isActorConnecting = actorLoading && !actor;
@@ -420,7 +548,7 @@ export function AdminDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
         {/* ── STATS CARDS ─────────────────────────────────────────────── */}
         <motion.div
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+          className="grid grid-cols-2 sm:grid-cols-4 gap-4"
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
@@ -472,6 +600,19 @@ export function AdminDashboard() {
                   ? "—"
                   : products.filter((p) => !p.inStock).length}
               </p>
+            </div>
+          </div>
+          {/* Total Orders */}
+          <div
+            data-ocid="admin.stats.orders_card"
+            className="admin-stats-card flex items-center gap-4"
+          >
+            <div className="admin-stats-icon admin-stats-icon-orders">
+              <ShoppingBag size={20} />
+            </div>
+            <div>
+              <p className="admin-stats-label">Total Orders</p>
+              <p className="admin-stats-value">{orders.length}</p>
             </div>
           </div>
         </motion.div>
@@ -1080,6 +1221,170 @@ export function AdminDashboard() {
                 )}
               </Button>
             </div>
+          </div>
+        </motion.div>
+
+        {/* ── ORDERS SECTION ───────────────────────────────────────────────── */}
+        <motion.div
+          data-ocid="admin.orders.section"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.22 }}
+        >
+          {/* Section header */}
+          <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg admin-header-icon flex items-center justify-center shrink-0">
+                <ShoppingBag size={16} />
+              </div>
+              <div>
+                <h2 className="admin-section-title text-2xl font-bold">
+                  Orders
+                </h2>
+                <p className="admin-section-sub text-sm mt-0.5">
+                  {orders.length} order{orders.length !== 1 ? "s" : ""} received
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refreshOrders}
+              className="admin-refresh-btn gap-2 text-xs"
+              aria-label="Refresh orders"
+            >
+              <RefreshCw size={14} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+          </div>
+
+          <div className="admin-table-card rounded-2xl overflow-hidden border">
+            {orders.length === 0 ? (
+              <div
+                data-ocid="admin.orders.empty_state"
+                className="flex flex-col items-center justify-center py-20 gap-3 text-center px-6"
+              >
+                <div className="w-14 h-14 rounded-2xl admin-empty-icon flex items-center justify-center text-3xl">
+                  🛒
+                </div>
+                <div>
+                  <p className="admin-section-title text-base font-semibold">
+                    No orders yet
+                  </p>
+                  <p className="admin-section-sub text-sm mt-1">
+                    Orders placed by customers will appear here.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table data-ocid="admin.orders.table">
+                  <TableHeader>
+                    <TableRow className="admin-table-head-row">
+                      <TableHead className="admin-th pl-5">Order #</TableHead>
+                      <TableHead className="admin-th">Customer</TableHead>
+                      <TableHead className="admin-th">Items</TableHead>
+                      <TableHead className="admin-th">Total</TableHead>
+                      <TableHead className="admin-th">Date</TableHead>
+                      <TableHead className="admin-th">Status</TableHead>
+                      <TableHead className="admin-th pr-5">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orders
+                      .slice()
+                      .reverse()
+                      .map((order, i) => (
+                        <TableRow
+                          key={order.id}
+                          data-ocid={`admin.orders.row.${i + 1}`}
+                          className="admin-table-row"
+                        >
+                          <TableCell className="pl-5 font-semibold admin-cell-name text-sm">
+                            #{order.id}
+                          </TableCell>
+                          <TableCell>
+                            <p className="admin-cell-name font-semibold text-sm leading-tight">
+                              {order.customerName}
+                            </p>
+                            <p className="admin-cell-meta text-xs mt-0.5">
+                              {order.customerPhone}
+                            </p>
+                          </TableCell>
+                          <TableCell className="max-w-[200px]">
+                            <div className="space-y-0.5">
+                              {order.items.map((item) => (
+                                <p
+                                  key={`${item.productId}-${item.productWeight}`}
+                                  className="admin-cell-desc text-xs leading-tight"
+                                >
+                                  {item.quantity} × {item.productName}{" "}
+                                  {item.productWeight}
+                                </p>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="admin-cell-price font-bold text-sm font-display">
+                            {formatINR(order.total)}
+                          </TableCell>
+                          <TableCell className="admin-cell-meta text-xs whitespace-nowrap">
+                            {formatDate(order.timestamp)}
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                order.status === "Delivered"
+                                  ? "admin-badge-instock"
+                                  : order.status === "Confirmed"
+                                    ? "admin-badge-confirmed"
+                                    : "admin-badge-pending"
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  order.status === "Delivered"
+                                    ? "admin-dot-instock"
+                                    : order.status === "Confirmed"
+                                      ? "admin-dot-confirmed"
+                                      : "admin-dot-pending"
+                                }`}
+                              />
+                              {order.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="pr-5">
+                            <Select
+                              value={order.status}
+                              onValueChange={(v) =>
+                                handleOrderStatusChange(
+                                  order.id,
+                                  v as Order["status"],
+                                )
+                              }
+                            >
+                              <SelectTrigger
+                                data-ocid={`admin.orders.status.select.${i + 1}`}
+                                className="admin-modal-input h-8 text-xs w-32"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="admin-select-content">
+                                <SelectItem value="Pending">Pending</SelectItem>
+                                <SelectItem value="Confirmed">
+                                  Confirmed
+                                </SelectItem>
+                                <SelectItem value="Delivered">
+                                  Delivered
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
         </motion.div>
       </main>
