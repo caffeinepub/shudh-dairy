@@ -1,3 +1,4 @@
+import type { backendInterface } from "@/backend.d";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,6 +47,7 @@ interface CartDrawerProps {
   onUpdateQuantity: (productId: number, delta: number) => void;
   onRemove: (productId: number) => void;
   onOrderPlaced?: (orderId: number) => void;
+  actor?: backendInterface | null;
 }
 
 type CheckoutStep = "cart" | "form" | "confirmation";
@@ -66,6 +68,7 @@ export function CartDrawer({
   onUpdateQuantity,
   onRemove,
   onOrderPlaced,
+  actor,
 }: CartDrawerProps) {
   const cartDetails = cartItems
     .map((item) => {
@@ -120,26 +123,82 @@ export function CartDrawer({
     return Object.keys(errors).length === 0;
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!validateForm()) return;
     setIsSubmitting(true);
     try {
-      const order = saveOrder({
-        customerName: form.name.trim(),
-        customerPhone: form.phone.trim(),
-        customerAddress: form.address.trim(),
-        items: cartDetails.map((item) => ({
-          productId: item.productId,
-          productName: item.product.name,
-          productWeight: item.product.weight,
-          quantity: item.quantity,
-          price: item.product.price,
-        })),
-        total,
-      });
-      setPlacedOrderId(order.id);
+      const orderItems = cartDetails.map((item) => ({
+        productId: BigInt(item.productId),
+        productName: item.product.name,
+        productWeight: item.product.weight,
+        quantity: BigInt(item.quantity),
+        price: item.product.price,
+      }));
+
+      let displayOrderId: number;
+
+      if (actor) {
+        try {
+          const backendOrderId = await actor.placeOrder(
+            form.name.trim(),
+            form.phone.trim(),
+            form.address.trim(),
+            orderItems,
+            total,
+          );
+          displayOrderId = Number(backendOrderId);
+          // Also save locally so customer can track from same browser
+          saveOrder({
+            customerName: form.name.trim(),
+            customerPhone: form.phone.trim(),
+            customerAddress: form.address.trim(),
+            items: cartDetails.map((item) => ({
+              productId: item.productId,
+              productName: item.product.name,
+              productWeight: item.product.weight,
+              quantity: item.quantity,
+              price: item.product.price,
+            })),
+            total,
+          });
+        } catch {
+          // Fall back to local storage only if backend call fails
+          const localOrder = saveOrder({
+            customerName: form.name.trim(),
+            customerPhone: form.phone.trim(),
+            customerAddress: form.address.trim(),
+            items: cartDetails.map((item) => ({
+              productId: item.productId,
+              productName: item.product.name,
+              productWeight: item.product.weight,
+              quantity: item.quantity,
+              price: item.product.price,
+            })),
+            total,
+          });
+          displayOrderId = localOrder.id;
+        }
+      } else {
+        // No actor available — use local storage as fallback
+        const localOrder = saveOrder({
+          customerName: form.name.trim(),
+          customerPhone: form.phone.trim(),
+          customerAddress: form.address.trim(),
+          items: cartDetails.map((item) => ({
+            productId: item.productId,
+            productName: item.product.name,
+            productWeight: item.product.weight,
+            quantity: item.quantity,
+            price: item.product.price,
+          })),
+          total,
+        });
+        displayOrderId = localOrder.id;
+      }
+
+      setPlacedOrderId(displayOrderId);
       setCheckoutStep("confirmation");
-      onOrderPlaced?.(order.id);
+      onOrderPlaced?.(displayOrderId);
     } finally {
       setIsSubmitting(false);
     }
@@ -610,6 +669,14 @@ export function CartDrawer({
               >
                 Continue Shopping
               </Button>
+
+              <a
+                href="/track-order"
+                data-ocid="cart.checkout.track_order_link"
+                className="mt-3 w-full h-10 rounded-xl border border-border flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary hover:border-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                Track Your Order
+              </a>
             </div>
           )}
         </DialogContent>

@@ -12,6 +12,7 @@ import {
 import {
   ArrowUp,
   ChevronDown,
+  ClipboardList,
   Leaf,
   Loader2,
   Mail,
@@ -27,99 +28,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CartDrawer, type CartItem, type DairyProduct } from "./CartDrawer";
+import { FounderSection } from "./FounderSection";
 import { ProductCard } from "./ProductCard";
-
-// ─── Static fallback catalog ───────────────────────────────────────────────────
-const STATIC_PRODUCTS: DairyProduct[] = [
-  {
-    id: 1,
-    name: "Pure Cow Ghee",
-    description:
-      "Farm fresh pure cow ghee made from cultured butter. Rich aroma and golden colour.",
-    price: 899,
-    category: "Ghee",
-    weight: "500g",
-    inStock: true,
-    image: "/assets/generated/ghee-cow.dim_600x600.jpg",
-  },
-  {
-    id: 2,
-    name: "Pure Cow Ghee",
-    description:
-      "Farm fresh pure cow ghee made from cultured butter. Rich aroma and golden colour.",
-    price: 1799,
-    category: "Ghee",
-    weight: "1kg",
-    inStock: true,
-    image: "/assets/generated/ghee-cow.dim_600x600.jpg",
-  },
-  {
-    id: 3,
-    name: "A2 Desi Ghee",
-    description:
-      "Premium A2 ghee from Gir cow milk. Prepared using traditional bilona method.",
-    price: 1100,
-    category: "Ghee",
-    weight: "500g",
-    inStock: true,
-    image: "/assets/generated/ghee-a2.dim_600x600.jpg",
-  },
-  {
-    id: 4,
-    name: "Buffalo Ghee",
-    description:
-      "Pure buffalo ghee with a rich, creamy texture. Ideal for cooking and sweets.",
-    price: 649,
-    category: "Ghee",
-    weight: "500g",
-    inStock: true,
-    image: "/assets/generated/ghee-buffalo.dim_600x600.jpg",
-  },
-  {
-    id: 5,
-    name: "Fresh Paneer",
-    description:
-      "Soft and fresh homestyle paneer. Made daily from full-fat cow milk.",
-    price: 89,
-    category: "Paneer",
-    weight: "200g",
-    inStock: true,
-    image: "/assets/generated/paneer-fresh.dim_600x600.jpg",
-  },
-  {
-    id: 6,
-    name: "Fresh Paneer",
-    description:
-      "Soft and fresh homestyle paneer. Made daily from full-fat cow milk.",
-    price: 199,
-    category: "Paneer",
-    weight: "500g",
-    inStock: true,
-    image: "/assets/generated/paneer-fresh.dim_600x600.jpg",
-  },
-  {
-    id: 7,
-    name: "Smoked Paneer",
-    description:
-      "Traditionally smoked paneer with a subtle earthy flavour. Perfect for grilling and curries.",
-    price: 149,
-    category: "Paneer",
-    weight: "200g",
-    inStock: true,
-    image: "/assets/generated/paneer-smoked.dim_600x600.jpg",
-  },
-];
-
-// ─── Per-product default images (based on id) ─────────────────────────────────
-const PRODUCT_ID_IMAGES: Record<string, string> = {
-  "1": "/assets/generated/ghee-cow.dim_600x600.jpg",
-  "2": "/assets/generated/ghee-cow.dim_600x600.jpg",
-  "3": "/assets/generated/ghee-a2.dim_600x600.jpg",
-  "4": "/assets/generated/ghee-buffalo.dim_600x600.jpg",
-  "5": "/assets/generated/paneer-fresh.dim_600x600.jpg",
-  "6": "/assets/generated/paneer-fresh.dim_600x600.jpg",
-  "7": "/assets/generated/paneer-smoked.dim_600x600.jpg",
-};
 
 // ─── Map backend product to DairyProduct ──────────────────────────────────────
 function mapBackendProduct(
@@ -130,9 +40,8 @@ function mapBackendProduct(
     Ghee: "/assets/generated/ghee-cow.dim_600x600.jpg",
     Paneer: "/assets/generated/paneer-fresh.dim_600x600.jpg",
   };
-  // Priority: custom uploaded > per-product default > category default
+  // Priority: custom uploaded image > category default
   const customImage = productImages[String(p.id)];
-  const idImage = PRODUCT_ID_IMAGES[String(p.id)];
   return {
     id: Number(p.id),
     name: p.name,
@@ -143,7 +52,6 @@ function mapBackendProduct(
     inStock: p.inStock,
     image:
       customImage ??
-      idImage ??
       categoryMap[p.category] ??
       "/assets/generated/ghee-cow.dim_600x600.jpg",
   };
@@ -173,28 +81,22 @@ export function StorePage() {
 
   // ── Backend products state ─────────────────────────────────────────────────
   const { actor, isFetching: actorLoading } = useActor();
-  const [products, setProducts] = useState<DairyProduct[]>(() => {
-    // Pre-apply custom images to static products on first load, then id-based defaults, then original
-    const images = getProductImages();
-    return STATIC_PRODUCTS.map((p) => ({
-      ...p,
-      image: images[String(p.id)] ?? PRODUCT_ID_IMAGES[String(p.id)] ?? p.image,
-    }));
-  });
+  const [products, setProducts] = useState<DairyProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
   useEffect(() => {
+    // Stay in loading state while actor is still connecting
     if (actorLoading || !actor) return;
     let cancelled = false;
     (async () => {
       try {
         const data = await actor.getAllProducts();
-        if (!cancelled && data.length > 0) {
+        if (!cancelled) {
           const productImages = getProductImages();
           setProducts(data.map((p) => mapBackendProduct(p, productImages)));
         }
       } catch {
-        // silently fall back to static products
+        // On error, leave products as empty array and let empty state show
       } finally {
         if (!cancelled) setIsLoadingProducts(false);
       }
@@ -305,33 +207,48 @@ export function StorePage() {
             </div>
           </motion.div>
 
-          {/* Cart button */}
-          <motion.button
-            data-ocid="header.cart_button"
-            onClick={() => setIsCartOpen(true)}
-            className="relative flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl font-semibold text-sm hover:bg-primary/90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 shadow-sm"
+          {/* Header actions */}
+          <motion.div
+            className="flex items-center gap-2"
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4 }}
-            whileTap={{ scale: 0.96 }}
           >
-            <ShoppingCart size={17} />
-            <span className="hidden sm:inline">Cart</span>
-            <AnimatePresence>
-              {cartCount > 0 && (
-                <motion.span
-                  key="badge"
-                  className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 22 }}
-                >
-                  {cartCount}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
+            {/* My Orders button */}
+            <a
+              href="/track-order"
+              data-ocid="header.my_orders_button"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-primary/40 text-primary bg-primary/8 hover:bg-primary/15 hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150"
+            >
+              <ClipboardList size={15} />
+              <span className="hidden sm:inline">My Orders</span>
+            </a>
+
+            {/* Cart button */}
+            <motion.button
+              data-ocid="header.cart_button"
+              onClick={() => setIsCartOpen(true)}
+              className="relative flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl font-semibold text-sm hover:bg-primary/90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 shadow-sm"
+              whileTap={{ scale: 0.96 }}
+            >
+              <ShoppingCart size={17} />
+              <span className="hidden sm:inline">Cart</span>
+              <AnimatePresence>
+                {cartCount > 0 && (
+                  <motion.span
+                    key="badge"
+                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                  >
+                    {cartCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          </motion.div>
         </div>
       </header>
 
@@ -599,6 +516,9 @@ export function StorePage() {
         )}
       </main>
 
+      {/* ── FOUNDER SECTION ────────────────────────────────────────────────── */}
+      <FounderSection />
+
       {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
       <footer className="border-t border-border bg-card mt-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
@@ -658,6 +578,19 @@ export function StorePage() {
                   >
                     Paneer Range
                   </button>
+                </li>
+                <li>
+                  <a
+                    href="/track-order"
+                    data-ocid="footer.track_order.link"
+                    className="hover:text-primary transition-colors flex items-center gap-1.5 font-medium text-foreground/80"
+                  >
+                    <ClipboardList
+                      size={13}
+                      className="text-primary shrink-0"
+                    />
+                    My Orders / Track Order
+                  </a>
                 </li>
               </ul>
             </div>
@@ -766,6 +699,7 @@ export function StorePage() {
         products={products}
         onUpdateQuantity={updateQuantity}
         onRemove={removeFromCart}
+        actor={actor}
         onOrderPlaced={() => {
           setCartItems([]);
           setIsCartOpen(false);

@@ -578,6 +578,91 @@
   }
 }
 
+@layer base {
+  /* ── Founder Section tokens ───────────────────────────────────────────────
+     Warm saffron-cream section with heritage feel — heritage Rajasthan warmth.
+  ─────────────────────────────────────────────────────────────────────────── */
+  .founder-section {
+    background: oklch(0.94 0.04 72);
+    border-top: 1px solid oklch(0.86 0.06 72);
+    border-bottom: 1px solid oklch(0.86 0.06 72);
+  }
+  .founder-blob-1 {
+    background: oklch(0.82 0.14 72);
+  }
+  .founder-blob-2 {
+    background: oklch(0.72 0.16 55);
+  }
+  .founder-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.5;
+  }
+  .founder-label {
+    color: oklch(0.52 0.14 58);
+    letter-spacing: 0.14em;
+  }
+  .founder-divider-line {
+    background: oklch(0.72 0.14 62 / 0.5);
+  }
+  .founder-frame-outer {
+    background: oklch(0.78 0.14 65 / 0.30);
+  }
+  .founder-frame-inner {
+    background: oklch(0.92 0.06 72 / 0.60);
+  }
+  .founder-photo-overlay {
+    background: linear-gradient(
+      to bottom,
+      transparent 60%,
+      oklch(0.35 0.10 55 / 0.25) 100%
+    );
+  }
+  .founder-year-badge {
+    background: oklch(0.20 0.06 55);
+  }
+  .founder-year-label {
+    color: oklch(0.72 0.14 72);
+    letter-spacing: 0.10em;
+  }
+  .founder-year-value {
+    color: oklch(0.96 0.04 82);
+  }
+  .founder-quote-icon {
+    background: oklch(0.68 0.19 62 / 0.15);
+    border: 1px solid oklch(0.68 0.19 62 / 0.25);
+  }
+  .founder-quote-icon-color {
+    color: oklch(0.58 0.18 62);
+  }
+  .founder-pullquote {
+    color: oklch(0.22 0.06 52);
+  }
+  .founder-bio {
+    color: oklch(0.36 0.04 55);
+  }
+  .founder-name-divider {
+    background: oklch(0.68 0.19 62);
+  }
+  .founder-name {
+    color: oklch(0.18 0.05 48);
+  }
+  .founder-title {
+    color: oklch(0.52 0.12 58);
+    letter-spacing: 0.04em;
+  }
+  .founder-company {
+    color: oklch(0.58 0.08 62);
+    letter-spacing: 0.08em;
+  }
+  .founder-pillar {
+    background: oklch(0.99 0.01 80 / 0.70);
+    border: 1px solid oklch(0.86 0.06 72 / 0.60);
+  }
+  .founder-pillar-text {
+    color: oklch(0.42 0.10 58);
+  }
+}
+
 @layer utilities {
   .font-display {
     font-family: "Playfair Display", Georgia, serif;

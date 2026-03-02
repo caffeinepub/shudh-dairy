@@ -1,4 +1,5 @@
 import type { Product } from "@/backend.d";
+import type { Order as BackendOrder } from "@/backend.d";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,17 +37,15 @@ import {
 } from "@/components/ui/tooltip";
 import { useActor } from "@/hooks/useActor";
 import {
-  type Order,
-  getAllOrders,
-  updateOrderStatus,
-} from "@/utils/orderStorage";
-import {
+  type FounderInfo,
   type StoreTheme,
   applyTheme,
   fileToDataUrl,
+  getFounderInfo,
   getLogoUrl,
   getProductImages,
   getTheme,
+  setFounderInfo,
   setLogoUrl,
   setProductImage,
   setTheme,
@@ -68,6 +67,7 @@ import {
   Store,
   Trash2,
   Upload,
+  User,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -176,6 +176,43 @@ const STATIC_IMAGES: Record<string, string> = {
   "6": "/assets/generated/paneer-fresh.dim_600x600.jpg",
   "7": "/assets/generated/paneer-smoked.dim_600x600.jpg",
 };
+
+// ── Order display type ─────────────────────────────────────────────────────
+type DisplayOrder = {
+  id: number;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  items: Array<{
+    productId: number;
+    productName: string;
+    productWeight: string;
+    quantity: number;
+    price: number;
+  }>;
+  total: number;
+  status: "Pending" | "Confirmed" | "Delivered";
+  timestamp: number;
+};
+
+function mapBackendOrder(o: BackendOrder): DisplayOrder {
+  return {
+    id: Number(o.id),
+    customerName: o.customerName,
+    customerPhone: o.customerPhone,
+    customerAddress: o.customerAddress,
+    items: o.items.map((item) => ({
+      productId: Number(item.productId),
+      productName: item.productName,
+      productWeight: item.productWeight,
+      quantity: Number(item.quantity),
+      price: item.price,
+    })),
+    total: o.total,
+    status: o.status as "Pending" | "Confirmed" | "Delivered",
+    timestamp: Number(o.timestamp) / 1_000_000,
+  };
+}
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -425,6 +462,51 @@ export function AdminDashboard() {
     }
   };
 
+  // ── Founder Info state ─────────────────────────────────────────────────────
+  const [founderInfo, setFounderInfoState] = useState<FounderInfo>(() =>
+    getFounderInfo(),
+  );
+  const [founderPhotoPreview, setFounderPhotoPreview] = useState<string>(
+    () => getFounderInfo().photo,
+  );
+  const [isSavingFounder, setIsSavingFounder] = useState(false);
+  const [isUploadingFounderPhoto, setIsUploadingFounderPhoto] = useState(false);
+  const founderPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFounderPhotoChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingFounderPhoto(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setFounderPhotoPreview(dataUrl);
+      setFounderInfoState((p) => ({ ...p, photo: dataUrl }));
+    } catch {
+      toast.error("Failed to load photo. Please try again.");
+    } finally {
+      setIsUploadingFounderPhoto(false);
+    }
+  };
+
+  const handleSaveFounderInfo = () => {
+    setIsSavingFounder(true);
+    try {
+      const infoToSave: FounderInfo = {
+        ...founderInfo,
+        photo: founderPhotoPreview,
+      };
+      setFounderInfo(infoToSave);
+      setFounderInfoState(infoToSave);
+      toast.success("Founder info saved!");
+    } catch {
+      toast.error("Failed to save founder info.");
+    } finally {
+      setIsSavingFounder(false);
+    }
+  };
+
   const formatINR = (amount: number) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -433,19 +515,43 @@ export function AdminDashboard() {
     }).format(amount);
 
   // ── Orders state ──────────────────────────────────────────────────────────
-  const [orders, setOrders] = useState<Order[]>(() => getAllOrders());
+  const [orders, setOrders] = useState<DisplayOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
-  const refreshOrders = () => {
-    setOrders(getAllOrders());
-  };
+  const refreshOrders = useCallback(async () => {
+    if (!actor) return;
+    setLoadingOrders(true);
+    try {
+      const data = await actor.getAllOrders();
+      setOrders(data.map(mapBackendOrder).reverse());
+    } catch {
+      toast.error("Could not load orders. Please try again.");
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, [actor]);
 
-  const handleOrderStatusChange = (
+  useEffect(() => {
+    if (token && actor && !actorLoading) refreshOrders();
+  }, [token, actor, actorLoading, refreshOrders]);
+
+  const handleOrderStatusChange = async (
     orderId: number,
-    status: Order["status"],
+    status: "Pending" | "Confirmed" | "Delivered",
   ) => {
-    updateOrderStatus(orderId, status);
-    refreshOrders();
-    toast.success(`Order #${orderId} marked as ${status}`);
+    if (!actor) return;
+    try {
+      await actor.updateOrderStatus(token, BigInt(orderId), status);
+      // Optimistically update local state immediately
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status } : o)),
+      );
+      toast.success(`Order #${orderId} marked as ${status}`);
+    } catch {
+      toast.error("Failed to update order status. Please try again.");
+      // Refresh to get actual state
+      await refreshOrders();
+    }
   };
 
   const formatDate = (timestamp: number) => {
@@ -1249,17 +1355,33 @@ export function AdminDashboard() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={refreshOrders}
+              onClick={() => {
+                void refreshOrders();
+              }}
+              disabled={loadingOrders}
               className="admin-refresh-btn gap-2 text-xs"
               aria-label="Refresh orders"
             >
-              <RefreshCw size={14} />
+              <RefreshCw
+                size={14}
+                className={loadingOrders ? "animate-spin" : ""}
+              />
               <span className="hidden sm:inline">Refresh</span>
             </Button>
           </div>
 
           <div className="admin-table-card rounded-2xl overflow-hidden border">
-            {orders.length === 0 ? (
+            {loadingOrders ? (
+              <div
+                data-ocid="admin.orders.loading_state"
+                className="flex items-center justify-center py-20 gap-3"
+              >
+                <Loader2 className="admin-spinner animate-spin" size={22} />
+                <span className="admin-section-sub text-sm">
+                  Loading orders…
+                </span>
+              </div>
+            ) : orders.length === 0 ? (
               <div
                 data-ocid="admin.orders.empty_state"
                 className="flex flex-col items-center justify-center py-20 gap-3 text-center px-6"
@@ -1291,100 +1413,318 @@ export function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders
-                      .slice()
-                      .reverse()
-                      .map((order, i) => (
-                        <TableRow
-                          key={order.id}
-                          data-ocid={`admin.orders.row.${i + 1}`}
-                          className="admin-table-row"
-                        >
-                          <TableCell className="pl-5 font-semibold admin-cell-name text-sm">
-                            #{order.id}
-                          </TableCell>
-                          <TableCell>
-                            <p className="admin-cell-name font-semibold text-sm leading-tight">
-                              {order.customerName}
-                            </p>
-                            <p className="admin-cell-meta text-xs mt-0.5">
-                              {order.customerPhone}
-                            </p>
-                          </TableCell>
-                          <TableCell className="max-w-[200px]">
-                            <div className="space-y-0.5">
-                              {order.items.map((item) => (
-                                <p
-                                  key={`${item.productId}-${item.productWeight}`}
-                                  className="admin-cell-desc text-xs leading-tight"
-                                >
-                                  {item.quantity} × {item.productName}{" "}
-                                  {item.productWeight}
-                                </p>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell className="admin-cell-price font-bold text-sm font-display">
-                            {formatINR(order.total)}
-                          </TableCell>
-                          <TableCell className="admin-cell-meta text-xs whitespace-nowrap">
-                            {formatDate(order.timestamp)}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                                order.status === "Delivered"
-                                  ? "admin-badge-instock"
-                                  : order.status === "Confirmed"
-                                    ? "admin-badge-confirmed"
-                                    : "admin-badge-pending"
-                              }`}
-                            >
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full ${
-                                  order.status === "Delivered"
-                                    ? "admin-dot-instock"
-                                    : order.status === "Confirmed"
-                                      ? "admin-dot-confirmed"
-                                      : "admin-dot-pending"
-                                }`}
-                              />
-                              {order.status}
-                            </span>
-                          </TableCell>
-                          <TableCell className="pr-5">
-                            <Select
-                              value={order.status}
-                              onValueChange={(v) =>
-                                handleOrderStatusChange(
-                                  order.id,
-                                  v as Order["status"],
-                                )
-                              }
-                            >
-                              <SelectTrigger
-                                data-ocid={`admin.orders.status.select.${i + 1}`}
-                                className="admin-modal-input h-8 text-xs w-32"
+                    {orders.map((order, i) => (
+                      <TableRow
+                        key={order.id}
+                        data-ocid={`admin.orders.row.${i + 1}`}
+                        className="admin-table-row"
+                      >
+                        <TableCell className="pl-5 font-semibold admin-cell-name text-sm">
+                          #{order.id}
+                        </TableCell>
+                        <TableCell>
+                          <p className="admin-cell-name font-semibold text-sm leading-tight">
+                            {order.customerName}
+                          </p>
+                          <p className="admin-cell-meta text-xs mt-0.5">
+                            {order.customerPhone}
+                          </p>
+                        </TableCell>
+                        <TableCell className="max-w-[200px]">
+                          <div className="space-y-0.5">
+                            {order.items.map((item) => (
+                              <p
+                                key={`${item.productId}-${item.productWeight}`}
+                                className="admin-cell-desc text-xs leading-tight"
                               >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="admin-select-content">
-                                <SelectItem value="Pending">Pending</SelectItem>
-                                <SelectItem value="Confirmed">
-                                  Confirmed
-                                </SelectItem>
-                                <SelectItem value="Delivered">
-                                  Delivered
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                {item.quantity} × {item.productName}{" "}
+                                {item.productWeight}
+                              </p>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="admin-cell-price font-bold text-sm font-display">
+                          {formatINR(order.total)}
+                        </TableCell>
+                        <TableCell className="admin-cell-meta text-xs whitespace-nowrap">
+                          {formatDate(order.timestamp)}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                              order.status === "Delivered"
+                                ? "admin-badge-instock"
+                                : order.status === "Confirmed"
+                                  ? "admin-badge-confirmed"
+                                  : "admin-badge-pending"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                order.status === "Delivered"
+                                  ? "admin-dot-instock"
+                                  : order.status === "Confirmed"
+                                    ? "admin-dot-confirmed"
+                                    : "admin-dot-pending"
+                              }`}
+                            />
+                            {order.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="pr-5">
+                          <Select
+                            value={order.status}
+                            onValueChange={(v) =>
+                              handleOrderStatusChange(
+                                order.id,
+                                v as "Pending" | "Confirmed" | "Delivered",
+                              )
+                            }
+                          >
+                            <SelectTrigger
+                              data-ocid={`admin.orders.status.select.${i + 1}`}
+                              className="admin-modal-input h-8 text-xs w-32"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="admin-select-content">
+                              <SelectItem value="Pending">Pending</SelectItem>
+                              <SelectItem value="Confirmed">
+                                Confirmed
+                              </SelectItem>
+                              <SelectItem value="Delivered">
+                                Delivered
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
             )}
+          </div>
+        </motion.div>
+
+        {/* ── FOUNDER INFO SECTION ─────────────────────────────────────────── */}
+        <motion.div
+          data-ocid="admin.founder.section"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.26 }}
+        >
+          {/* Section header */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-lg admin-header-icon flex items-center justify-center shrink-0">
+              <User size={16} />
+            </div>
+            <div>
+              <h2 className="admin-section-title text-2xl font-bold">
+                Founder Info
+              </h2>
+              <p className="admin-section-sub text-sm mt-0.5">
+                Personalise the founder story shown on your store page
+              </p>
+            </div>
+          </div>
+
+          <div className="admin-table-card rounded-2xl border p-6 space-y-6">
+            {/* Photo upload */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Image size={16} className="admin-cell-meta" />
+                <h3 className="admin-section-title text-base font-semibold">
+                  Founder Photo
+                </h3>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start gap-5">
+                {/* Preview */}
+                <div className="w-24 h-24 rounded-2xl border-2 border-dashed admin-settings-border flex items-center justify-center shrink-0 overflow-hidden bg-white">
+                  {isUploadingFounderPhoto ? (
+                    <Loader2 size={20} className="admin-spinner animate-spin" />
+                  ) : founderPhotoPreview ? (
+                    <img
+                      src={founderPhotoPreview}
+                      alt="Founder preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-center px-2">
+                      <User size={24} className="admin-cell-meta opacity-30" />
+                      <span className="text-xs admin-section-sub">
+                        No photo
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload controls */}
+                <div className="flex-1 space-y-3">
+                  <p className="admin-section-sub text-sm leading-relaxed">
+                    Upload a professional photo. Recommended: square image,
+                    minimum 400×400px.
+                  </p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <input
+                      ref={founderPhotoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      id="founder-photo-input"
+                      data-ocid="admin.founder_photo_upload"
+                      onChange={handleFounderPhotoChange}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => founderPhotoInputRef.current?.click()}
+                      className="admin-retry-btn gap-2"
+                    >
+                      <Upload size={14} />
+                      {founderPhotoPreview ? "Change Photo" : "Upload Photo"}
+                    </Button>
+                    {founderPhotoPreview && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setFounderPhotoPreview("");
+                          setFounderInfoState((p) => ({ ...p, photo: "" }));
+                          if (founderPhotoInputRef.current)
+                            founderPhotoInputRef.current.value = "";
+                        }}
+                        className="admin-delete-btn gap-2 text-xs"
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t admin-settings-divider" />
+
+            {/* Name + Title */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="founder-name"
+                  className="admin-label text-xs font-semibold uppercase tracking-wider"
+                >
+                  Founder Name
+                </Label>
+                <Input
+                  id="founder-name"
+                  data-ocid="admin.founder_name_input"
+                  value={founderInfo.name}
+                  onChange={(e) =>
+                    setFounderInfoState((p) => ({
+                      ...p,
+                      name: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. Ramesh Patel"
+                  className="admin-modal-input"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="founder-title"
+                  className="admin-label text-xs font-semibold uppercase tracking-wider"
+                >
+                  Title / Role
+                </Label>
+                <Input
+                  id="founder-title"
+                  data-ocid="admin.founder_title_input"
+                  value={founderInfo.title}
+                  onChange={(e) =>
+                    setFounderInfoState((p) => ({
+                      ...p,
+                      title: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. Founder & Managing Director"
+                  className="admin-modal-input"
+                />
+              </div>
+            </div>
+
+            {/* Founded Year */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="founder-year"
+                className="admin-label text-xs font-semibold uppercase tracking-wider"
+              >
+                Founded Year
+              </Label>
+              <Input
+                id="founder-year"
+                value={founderInfo.foundedYear}
+                onChange={(e) =>
+                  setFounderInfoState((p) => ({
+                    ...p,
+                    foundedYear: e.target.value,
+                  }))
+                }
+                placeholder="e.g. 2018"
+                className="admin-modal-input sm:max-w-[160px]"
+              />
+            </div>
+
+            {/* Bio */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="founder-bio"
+                className="admin-label text-xs font-semibold uppercase tracking-wider"
+              >
+                Bio / Story
+              </Label>
+              <Textarea
+                id="founder-bio"
+                data-ocid="admin.founder_bio_textarea"
+                value={founderInfo.bio}
+                onChange={(e) =>
+                  setFounderInfoState((p) => ({ ...p, bio: e.target.value }))
+                }
+                placeholder="Share the founder's story and vision…"
+                rows={4}
+                className="admin-modal-input resize-none"
+              />
+              <p className="text-xs admin-section-sub">
+                This appears in the Our Story section on your store page.
+              </p>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t admin-settings-divider" />
+
+            {/* Save button */}
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs admin-section-sub">
+                Changes will appear on the store page immediately after saving.
+              </p>
+              <Button
+                data-ocid="admin.founder_save_button"
+                onClick={handleSaveFounderInfo}
+                disabled={isSavingFounder}
+                className="admin-save-btn font-semibold gap-2 shrink-0"
+              >
+                {isSavingFounder ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save Founder Info"
+                )}
+              </Button>
+            </div>
           </div>
         </motion.div>
       </main>

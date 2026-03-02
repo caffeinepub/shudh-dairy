@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { AdminLogin } from "./components/AdminLogin";
+import { OrderTracker } from "./components/OrderTracker";
 import { StorePage } from "./components/StorePage";
 
 // ── Root route ───────────────────────────────────────────────────────────────
@@ -42,10 +43,18 @@ const adminDashboardRoute = createRoute({
   component: AdminDashboard,
 });
 
+// ── Order Tracker ─────────────────────────────────────────────────────────────
+const trackOrderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/track-order",
+  component: OrderTracker,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   adminRoute,
   adminDashboardRoute,
+  trackOrderRoute,
 ]);
 
 const router = createRouter({ routeTree });

@@ -126,3 +126,37 @@ export function fileToDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+// ── Founder Info ───────────────────────────────────────────────────────────────
+
+const FOUNDER_KEY = "sunrise_founder_info";
+
+export type FounderInfo = {
+  name: string;
+  title: string;
+  bio: string;
+  photo: string; // base64 data URL or empty string for default
+  foundedYear: string;
+};
+
+const DEFAULT_FOUNDER: FounderInfo = {
+  name: "Founder",
+  title: "Founder & Managing Director",
+  bio: "Started SUNRISE MILK AND AGRO PRODUCT'S with a simple vision — to bring pure, farm-fresh dairy products directly to families in Udaipur. Every product is made with care, tradition, and love for quality.",
+  photo: "",
+  foundedYear: "2018",
+};
+
+export function getFounderInfo(): FounderInfo {
+  try {
+    const raw = localStorage.getItem(FOUNDER_KEY);
+    if (!raw) return DEFAULT_FOUNDER;
+    return { ...DEFAULT_FOUNDER, ...(JSON.parse(raw) as Partial<FounderInfo>) };
+  } catch {
+    return DEFAULT_FOUNDER;
+  }
+}
+
+export function setFounderInfo(info: FounderInfo): void {
+  localStorage.setItem(FOUNDER_KEY, JSON.stringify(info));
+}

@@ -54,3 +54,11 @@ export function updateOrderStatus(
   );
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 }
+
+export function getOrdersByPhone(phone: string): Order[] {
+  return getAllOrders().filter((o) => o.customerPhone === phone.trim());
+}
+
+export function getOrderById(id: number): Order | undefined {
+  return getAllOrders().find((o) => o.id === id);
+}
