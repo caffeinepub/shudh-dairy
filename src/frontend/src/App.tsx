@@ -35,8 +35,16 @@ const adminDashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/dashboard",
   beforeLoad: () => {
-    const token = localStorage.getItem("adminToken");
+    const token = sessionStorage.getItem("adminToken");
     if (!token) {
+      throw redirect({ to: "/admin" });
+    }
+    // Check session expiry (8 hours)
+    const expiry = sessionStorage.getItem("adminSessionExpiry");
+    if (expiry && Date.now() > Number(expiry)) {
+      sessionStorage.removeItem("adminToken");
+      sessionStorage.removeItem("adminUser");
+      sessionStorage.removeItem("adminSessionExpiry");
       throw redirect({ to: "/admin" });
     }
   },

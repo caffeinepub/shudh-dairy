@@ -59,10 +59,13 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import {
   ExternalLink,
+  Eye,
+  EyeOff,
   Image,
   LayoutGrid,
   LayoutList,
   Loader2,
+  Lock,
   LogOut,
   Package,
   PackagePlus,
@@ -77,7 +80,13 @@ import {
   User,
 } from "lucide-react";
 
-type AdminSection = "products" | "orders" | "settings" | "founder" | "social";
+type AdminSection =
+  | "products"
+  | "orders"
+  | "settings"
+  | "founder"
+  | "social"
+  | "security";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -144,11 +153,20 @@ export function AdminDashboard() {
   const { actor, isFetching: actorLoading } = useActor();
 
   // ── Auth check ─────────────────────────────────────────────────────────────
-  const token = localStorage.getItem("adminToken") ?? "";
-  const adminUser = localStorage.getItem("adminUser") ?? "Admin";
+  const token = sessionStorage.getItem("adminToken") ?? "";
+  const adminUser = sessionStorage.getItem("adminUser") ?? "Admin";
 
   useEffect(() => {
     if (!token) {
+      navigate({ to: "/admin" });
+      return;
+    }
+    // Check session expiry (8 hours)
+    const expiry = sessionStorage.getItem("adminSessionExpiry");
+    if (expiry && Date.now() > Number(expiry)) {
+      sessionStorage.removeItem("adminToken");
+      sessionStorage.removeItem("adminUser");
+      sessionStorage.removeItem("adminSessionExpiry");
       navigate({ to: "/admin" });
     }
   }, [token, navigate]);
@@ -332,8 +350,9 @@ export function AdminDashboard() {
 
   // ── Logout ────────────────────────────────────────────────────────────────
   const handleLogout = () => {
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminUser");
+    sessionStorage.removeItem("adminToken");
+    sessionStorage.removeItem("adminUser");
+    sessionStorage.removeItem("adminSessionExpiry");
     navigate({ to: "/admin" });
   };
 
@@ -353,6 +372,7 @@ export function AdminDashboard() {
     { id: "settings", label: "Store Settings", Icon: Store },
     { id: "founder", label: "Founder Info", Icon: User },
     { id: "social", label: "Social Media", Icon: Share2 },
+    { id: "security", label: "Security", Icon: Lock },
   ];
 
   // ── Store Settings ─────────────────────────────────────────────────────────
@@ -504,6 +524,48 @@ export function AdminDashboard() {
     setNewPlatformLabel("");
     setNewPlatformUrl("");
     setNewPlatformColor("#333333");
+  };
+
+  // ── Security / Change Password state ─────────────────────────────────────
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [pwdError, setPwdError] = useState("");
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwdError("");
+    const storedPwd = localStorage.getItem("adminPassword") || "sunrise2024";
+
+    if (currentPassword !== storedPwd) {
+      setPwdError("Current password is incorrect.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPwdError("New password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwdError("Passwords do not match.");
+      return;
+    }
+
+    setIsSavingPassword(true);
+    try {
+      localStorage.setItem("adminPassword", newPassword);
+      toast.success("Password updated successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      toast.error("Failed to save password. Please try again.");
+    } finally {
+      setIsSavingPassword(false);
+    }
   };
 
   const formatINR = (amount: number) =>
@@ -1938,6 +2000,206 @@ export function AdminDashboard() {
               </div>
             </motion.div>
           )}
+          {/* ── SECURITY SECTION ─────────────────────────────────────────────── */}
+          {activeSection === "security" && (
+            <motion.div
+              data-ocid="admin.security.section"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.18 }}
+            >
+              {/* Section header */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 rounded-lg admin-header-icon flex items-center justify-center shrink-0">
+                  <Lock size={16} />
+                </div>
+                <div>
+                  <h2 className="admin-section-title text-2xl font-bold">
+                    Security
+                  </h2>
+                  <p className="admin-section-sub text-sm mt-0.5">
+                    Update your admin password
+                  </p>
+                </div>
+              </div>
+
+              <div className="admin-table-card rounded-2xl border p-6 space-y-6">
+                <form
+                  onSubmit={handleChangePassword}
+                  className="space-y-5"
+                  noValidate
+                >
+                  {/* Current Password */}
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="security-current-pwd"
+                      className="admin-label text-xs font-semibold uppercase tracking-wider"
+                    >
+                      Current Password
+                    </Label>
+                    <div className="relative">
+                      <Lock
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 admin-input-icon"
+                        size={15}
+                      />
+                      <input
+                        id="security-current-pwd"
+                        data-ocid="admin.security.current_password_input"
+                        type={showCurrentPwd ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => {
+                          setCurrentPassword(e.target.value);
+                          setPwdError("");
+                        }}
+                        placeholder="Enter current password"
+                        autoComplete="current-password"
+                        className="admin-modal-input w-full pl-10 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPwd((v) => !v)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 admin-input-icon hover:opacity-80 transition-opacity"
+                        aria-label={
+                          showCurrentPwd ? "Hide password" : "Show password"
+                        }
+                        tabIndex={-1}
+                      >
+                        {showCurrentPwd ? (
+                          <EyeOff size={15} />
+                        ) : (
+                          <Eye size={15} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* New Password */}
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="security-new-pwd"
+                      className="admin-label text-xs font-semibold uppercase tracking-wider"
+                    >
+                      New Password
+                    </Label>
+                    <div className="relative">
+                      <Lock
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 admin-input-icon"
+                        size={15}
+                      />
+                      <input
+                        id="security-new-pwd"
+                        data-ocid="admin.security.new_password_input"
+                        type={showNewPwd ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => {
+                          setNewPassword(e.target.value);
+                          setPwdError("");
+                        }}
+                        placeholder="At least 6 characters"
+                        autoComplete="new-password"
+                        className="admin-modal-input w-full pl-10 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPwd((v) => !v)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 admin-input-icon hover:opacity-80 transition-opacity"
+                        aria-label={
+                          showNewPwd ? "Hide password" : "Show password"
+                        }
+                        tabIndex={-1}
+                      >
+                        {showNewPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm New Password */}
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="security-confirm-pwd"
+                      className="admin-label text-xs font-semibold uppercase tracking-wider"
+                    >
+                      Confirm New Password
+                    </Label>
+                    <div className="relative">
+                      <Lock
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 admin-input-icon"
+                        size={15}
+                      />
+                      <input
+                        id="security-confirm-pwd"
+                        data-ocid="admin.security.confirm_password_input"
+                        type={showConfirmPwd ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          setPwdError("");
+                        }}
+                        placeholder="Re-enter new password"
+                        autoComplete="new-password"
+                        className="admin-modal-input w-full pl-10 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPwd((v) => !v)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 admin-input-icon hover:opacity-80 transition-opacity"
+                        aria-label={
+                          showConfirmPwd ? "Hide password" : "Show password"
+                        }
+                        tabIndex={-1}
+                      >
+                        {showConfirmPwd ? (
+                          <EyeOff size={15} />
+                        ) : (
+                          <Eye size={15} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Inline error */}
+                  {pwdError && (
+                    <motion.div
+                      data-ocid="admin.security.error_state"
+                      role="alert"
+                      className="admin-error rounded-lg px-4 py-3 text-sm"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <p>{pwdError}</p>
+                    </motion.div>
+                  )}
+
+                  {/* Divider */}
+                  <div className="border-t admin-settings-divider" />
+
+                  {/* Save button */}
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-xs admin-section-sub">
+                      Your new password will be required on the next login.
+                    </p>
+                    <Button
+                      type="submit"
+                      data-ocid="admin.security.save_button"
+                      disabled={isSavingPassword}
+                      className="admin-save-btn font-semibold gap-2 shrink-0"
+                    >
+                      {isSavingPassword ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Saving…
+                        </>
+                      ) : (
+                        "Save Password"
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          )}
+
           {/* ── SOCIAL MEDIA SECTION ─────────────────────────────────────────── */}
           {activeSection === "social" && (
             <motion.div
