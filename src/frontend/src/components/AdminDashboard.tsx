@@ -95,90 +95,6 @@ const emptyForm: ProductFormData = {
   imageUrl: "",
 };
 
-// ── Static fallback products (shown while backend loads) ────────────────────
-const STATIC_FALLBACK: Product[] = [
-  {
-    id: BigInt(1),
-    name: "Pure Cow Ghee",
-    description:
-      "Farm fresh pure cow ghee made from cultured butter. Rich aroma and golden colour.",
-    price: 899,
-    category: "Ghee",
-    weight: "500g",
-    inStock: true,
-  },
-  {
-    id: BigInt(2),
-    name: "Pure Cow Ghee",
-    description:
-      "Farm fresh pure cow ghee made from cultured butter. Rich aroma and golden colour.",
-    price: 1799,
-    category: "Ghee",
-    weight: "1kg",
-    inStock: true,
-  },
-  {
-    id: BigInt(3),
-    name: "A2 Desi Ghee",
-    description:
-      "Premium A2 ghee from Gir cow milk. Prepared using traditional bilona method.",
-    price: 1100,
-    category: "Ghee",
-    weight: "500g",
-    inStock: true,
-  },
-  {
-    id: BigInt(4),
-    name: "Buffalo Ghee",
-    description:
-      "Pure buffalo ghee with a rich, creamy texture. Ideal for cooking and sweets.",
-    price: 649,
-    category: "Ghee",
-    weight: "500g",
-    inStock: true,
-  },
-  {
-    id: BigInt(5),
-    name: "Fresh Paneer",
-    description:
-      "Soft and fresh homestyle paneer. Made daily from full-fat cow milk.",
-    price: 89,
-    category: "Paneer",
-    weight: "200g",
-    inStock: true,
-  },
-  {
-    id: BigInt(6),
-    name: "Fresh Paneer",
-    description:
-      "Soft and fresh homestyle paneer. Made daily from full-fat cow milk.",
-    price: 199,
-    category: "Paneer",
-    weight: "500g",
-    inStock: true,
-  },
-  {
-    id: BigInt(7),
-    name: "Smoked Paneer",
-    description:
-      "Traditionally smoked paneer with a subtle earthy flavour. Perfect for grilling and curries.",
-    price: 149,
-    category: "Paneer",
-    weight: "200g",
-    inStock: true,
-  },
-];
-
-const STATIC_IMAGES: Record<string, string> = {
-  "1": "/assets/generated/ghee-cow.dim_600x600.jpg",
-  "2": "/assets/generated/ghee-cow.dim_600x600.jpg",
-  "3": "/assets/generated/ghee-a2.dim_600x600.jpg",
-  "4": "/assets/generated/ghee-buffalo.dim_600x600.jpg",
-  "5": "/assets/generated/paneer-fresh.dim_600x600.jpg",
-  "6": "/assets/generated/paneer-fresh.dim_600x600.jpg",
-  "7": "/assets/generated/paneer-smoked.dim_600x600.jpg",
-};
-
 // ── Order display type ─────────────────────────────────────────────────────
 type DisplayOrder = {
   id: number;
@@ -231,11 +147,11 @@ export function AdminDashboard() {
   }, [token, navigate]);
 
   // ── Product list state ─────────────────────────────────────────────────────
-  const [products, setProducts] = useState<Product[]>(STATIC_FALLBACK);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [productImages, setProductImages] = useState<Record<string, string>>(
-    () => ({ ...STATIC_IMAGES, ...getProductImages() }),
+    () => getProductImages(),
   );
 
   const loadProducts = useCallback(async () => {
@@ -244,27 +160,17 @@ export function AdminDashboard() {
     setLoadError(false);
     try {
       const data = await actor.getAllProducts();
-      if (data.length > 0) {
-        setProducts(data);
-      } else {
-        setProducts(STATIC_FALLBACK);
-      }
-      setProductImages({ ...STATIC_IMAGES, ...getProductImages() });
+      setProducts(data);
+      setProductImages(getProductImages());
     } catch {
-      // Keep showing static products on error
-      setProducts(STATIC_FALLBACK);
-      setProductImages({ ...STATIC_IMAGES, ...getProductImages() });
-      setLoadError(false);
-      toast.error("Could not sync with server, showing local products");
+      setProducts([]);
+      setProductImages(getProductImages());
+      setLoadError(true);
+      toast.error("Could not load products. Please try again.");
     } finally {
       setLoadingProducts(false);
     }
   }, [actor]);
-
-  // Show static products immediately while waiting for backend
-  useEffect(() => {
-    setLoadingProducts(false);
-  }, []);
 
   useEffect(() => {
     if (token && actor && !actorLoading) loadProducts();
@@ -381,8 +287,8 @@ export function AdminDashboard() {
         if (newProduct && formData.imageUrl) {
           setProductImage(String(newProduct.id), formData.imageUrl);
         }
-        setProducts(allProducts.length > 0 ? allProducts : STATIC_FALLBACK);
-        setProductImages({ ...STATIC_IMAGES, ...getProductImages() });
+        setProducts(allProducts);
+        setProductImages(getProductImages());
         toast.success("Product added successfully");
       }
       setModalOpen(false);
