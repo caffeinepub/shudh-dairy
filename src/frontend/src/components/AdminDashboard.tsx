@@ -38,16 +38,22 @@ import {
 import { useActor } from "@/hooks/useActor";
 import {
   type FounderInfo,
+  type SocialLink,
   type StoreTheme,
   applyTheme,
   fileToDataUrl,
+  getBgImage,
   getFounderInfo,
   getLogoUrl,
   getProductImages,
+  getSocialLinks,
   getTheme,
+  removeBgImage,
+  setBgImage,
   setFounderInfo,
   setLogoUrl,
   setProductImage,
+  setSocialLinks,
   setTheme,
 } from "@/utils/storeCustomization";
 import { useNavigate } from "@tanstack/react-router";
@@ -63,6 +69,7 @@ import {
   Palette,
   Pencil,
   RefreshCw,
+  Share2,
   ShoppingBag,
   Store,
   Trash2,
@@ -70,7 +77,7 @@ import {
   User,
 } from "lucide-react";
 
-type AdminSection = "products" | "orders" | "settings" | "founder";
+type AdminSection = "products" | "orders" | "settings" | "founder" | "social";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -345,13 +352,36 @@ export function AdminDashboard() {
     { id: "orders", label: "Orders", Icon: ShoppingBag },
     { id: "settings", label: "Store Settings", Icon: Store },
     { id: "founder", label: "Founder Info", Icon: User },
+    { id: "social", label: "Social Media", Icon: Share2 },
   ];
 
   // ── Store Settings ─────────────────────────────────────────────────────────
+  const DEFAULT_BG = "/assets/uploads/Divine-Decorations-1.jpg";
   const [logoPreview, setLogoPreview] = useState<string>(() => getLogoUrl());
+  const [bgImagePreview, setBgImagePreview] = useState<string>(
+    () => getBgImage() || DEFAULT_BG,
+  );
+  const [isUploadingBgImage, setIsUploadingBgImage] = useState(false);
   const [theme, setThemeState] = useState<StoreTheme>(() => getTheme());
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const bgImageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBgImageFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingBgImage(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setBgImagePreview(dataUrl);
+    } catch {
+      toast.error("Failed to load image. Please try again.");
+    } finally {
+      setIsUploadingBgImage(false);
+    }
+  };
 
   const handleLogoFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -372,6 +402,12 @@ export function AdminDashboard() {
       // Save logo if changed
       if (logoPreview !== getLogoUrl()) {
         setLogoUrl(logoPreview);
+      }
+      // Save background image
+      if (bgImagePreview && bgImagePreview !== DEFAULT_BG) {
+        setBgImage(bgImagePreview);
+      } else if (!bgImagePreview || bgImagePreview === DEFAULT_BG) {
+        removeBgImage();
       }
       // Save and apply theme
       setTheme(theme);
@@ -427,6 +463,47 @@ export function AdminDashboard() {
     } finally {
       setIsSavingFounder(false);
     }
+  };
+
+  // ── Social Media state ─────────────────────────────────────────────────────
+  const [socialLinks, setSocialLinksState] = useState<SocialLink[]>(() =>
+    getSocialLinks(),
+  );
+  const [isSavingSocial, setIsSavingSocial] = useState(false);
+  const [newPlatformLabel, setNewPlatformLabel] = useState("");
+  const [newPlatformUrl, setNewPlatformUrl] = useState("");
+  const [newPlatformColor, setNewPlatformColor] = useState("#333333");
+
+  const handleSaveSocialLinks = () => {
+    setIsSavingSocial(true);
+    try {
+      setSocialLinks(socialLinks);
+      toast.success("Social media links saved!");
+    } catch {
+      toast.error("Failed to save social media links.");
+    } finally {
+      setIsSavingSocial(false);
+    }
+  };
+
+  const handleAddCustomPlatform = () => {
+    if (!newPlatformLabel.trim() || !newPlatformUrl.trim()) {
+      toast.error("Please enter both platform name and URL.");
+      return;
+    }
+    const newLink: SocialLink = {
+      id: `custom_${Date.now()}`,
+      platform: "custom",
+      label: newPlatformLabel.trim(),
+      url: newPlatformUrl.trim(),
+      enabled: true,
+      color: newPlatformColor,
+      iconSvg: "",
+    };
+    setSocialLinksState((prev) => [...prev, newLink]);
+    setNewPlatformLabel("");
+    setNewPlatformUrl("");
+    setNewPlatformColor("#333333");
   };
 
   const formatINR = (amount: number) =>
@@ -1199,6 +1276,90 @@ export function AdminDashboard() {
                 {/* Divider */}
                 <div className="border-t admin-settings-divider" />
 
+                {/* ── Background Image ──────────────────────────── */}
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Image size={16} className="admin-cell-meta" />
+                    <h3 className="admin-section-title text-base font-semibold">
+                      Website Background Image
+                    </h3>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-start gap-5">
+                    {/* Preview */}
+                    <div className="w-32 h-24 rounded-xl border-2 border-dashed admin-settings-border flex items-center justify-center shrink-0 overflow-hidden bg-white">
+                      {bgImagePreview ? (
+                        <img
+                          src={bgImagePreview}
+                          alt="Background preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-center px-2">
+                          <Image
+                            size={24}
+                            className="admin-cell-meta opacity-30"
+                          />
+                          <span className="text-xs admin-section-sub">
+                            No image
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upload controls */}
+                    <div className="flex-1 space-y-3">
+                      <p className="admin-section-sub text-sm leading-relaxed">
+                        Upload an image to use as the website background.
+                        Recommended: JPG or PNG, at least 1200×800px. The
+                        current background is the Divine Decorations image by
+                        default.
+                      </p>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <input
+                          ref={bgImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          id="bg-image-file-input"
+                          data-ocid="admin.settings.bg_image_upload"
+                          onChange={handleBgImageFileChange}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isUploadingBgImage}
+                          onClick={() => bgImageInputRef.current?.click()}
+                          className="admin-retry-btn gap-2"
+                        >
+                          {isUploadingBgImage ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Upload size={14} />
+                          )}
+                          {isUploadingBgImage
+                            ? "Loading…"
+                            : "Choose Background Image"}
+                        </Button>
+                        {bgImagePreview && bgImagePreview !== DEFAULT_BG && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setBgImagePreview(DEFAULT_BG)}
+                            className="admin-delete-btn gap-2 text-xs"
+                          >
+                            Reset to Default
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t admin-settings-divider" />
+
                 {/* ── Theme colours ────────────────────────────────── */}
                 <div>
                   <div className="flex items-center gap-2 mb-4">
@@ -1772,6 +1933,193 @@ export function AdminDashboard() {
                     ) : (
                       "Save Founder Info"
                     )}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          {/* ── SOCIAL MEDIA SECTION ─────────────────────────────────────────── */}
+          {activeSection === "social" && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.18 }}
+            >
+              {/* Section header */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 rounded-lg admin-header-icon flex items-center justify-center shrink-0">
+                  <Share2 size={16} />
+                </div>
+                <div>
+                  <h2 className="admin-section-title text-2xl font-bold">
+                    Social Media
+                  </h2>
+                  <p className="admin-section-sub text-sm mt-0.5">
+                    Manage your social media links shown in the store footer
+                  </p>
+                </div>
+              </div>
+
+              <div className="admin-table-card rounded-2xl border p-6 space-y-6">
+                {/* Platform list */}
+                <div className="space-y-3">
+                  {socialLinks.map((link, i) => (
+                    <div
+                      key={link.id}
+                      data-ocid={`admin.social.item.${i + 1}`}
+                      className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 rounded-xl border admin-settings-border bg-card/30"
+                    >
+                      {/* Icon preview */}
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: link.color }}
+                      >
+                        {link.iconSvg ? (
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="16"
+                            height="16"
+                            fill="white"
+                            aria-hidden="true"
+                          >
+                            <path d={link.iconSvg} />
+                          </svg>
+                        ) : (
+                          <span className="text-white text-xs font-bold">
+                            {link.label.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Label */}
+                      <div className="w-28 shrink-0">
+                        <p className="admin-cell-name font-semibold text-sm">
+                          {link.label}
+                        </p>
+                      </div>
+
+                      {/* URL input */}
+                      <div className="flex-1 min-w-0">
+                        <Input
+                          data-ocid={`admin.social.url_input.${i + 1}`}
+                          type="url"
+                          placeholder="https://..."
+                          value={link.url}
+                          onChange={(e) =>
+                            setSocialLinksState((prev) =>
+                              prev.map((l) =>
+                                l.id === link.id
+                                  ? { ...l, url: e.target.value }
+                                  : l,
+                              ),
+                            )
+                          }
+                          className="text-sm h-8 rounded-lg"
+                        />
+                      </div>
+
+                      {/* Enable toggle */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Switch
+                          data-ocid={`admin.social.toggle.${i + 1}`}
+                          checked={link.enabled}
+                          onCheckedChange={(checked) =>
+                            setSocialLinksState((prev) =>
+                              prev.map((l) =>
+                                l.id === link.id
+                                  ? { ...l, enabled: checked }
+                                  : l,
+                              ),
+                            )
+                          }
+                        />
+                        <span className="text-xs admin-section-sub">
+                          {link.enabled ? "On" : "Off"}
+                        </span>
+                      </div>
+
+                      {/* Delete button (only for custom platforms) */}
+                      {link.platform === "custom" && (
+                        <Button
+                          data-ocid={`admin.social.delete_button.${i + 1}`}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setSocialLinksState((prev) =>
+                              prev.filter((l) => l.id !== link.id),
+                            )
+                          }
+                          className="admin-delete-btn h-8 w-8 p-0 rounded-lg shrink-0"
+                          aria-label={`Remove ${link.label}`}
+                        >
+                          <Trash2 size={13} />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add custom platform */}
+                <div className="border-t admin-settings-divider pt-5">
+                  <h3 className="admin-section-title text-sm font-semibold mb-3">
+                    Add Custom Platform
+                  </h3>
+                  <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+                    <Input
+                      data-ocid="admin.social.new_platform_input"
+                      placeholder="Platform name (e.g. LinkedIn)"
+                      value={newPlatformLabel}
+                      onChange={(e) => setNewPlatformLabel(e.target.value)}
+                      className="text-sm flex-1 min-w-36"
+                    />
+                    <Input
+                      data-ocid="admin.social.new_url_input"
+                      type="url"
+                      placeholder="URL (e.g. https://linkedin.com/...)"
+                      value={newPlatformUrl}
+                      onChange={(e) => setNewPlatformUrl(e.target.value)}
+                      className="text-sm flex-1 min-w-48"
+                    />
+                    <div className="flex items-center gap-2">
+                      <label
+                        className="admin-label text-xs font-medium"
+                        htmlFor="new-social-color"
+                      >
+                        Color
+                      </label>
+                      <input
+                        id="new-social-color"
+                        type="color"
+                        data-ocid="admin.social.new_color_input"
+                        value={newPlatformColor}
+                        onChange={(e) => setNewPlatformColor(e.target.value)}
+                        className="w-9 h-9 rounded-lg border border-border cursor-pointer p-0.5"
+                      />
+                    </div>
+                    <Button
+                      data-ocid="admin.social.add_button"
+                      size="sm"
+                      onClick={handleAddCustomPlatform}
+                      className="admin-add-btn gap-2 text-sm font-semibold shrink-0"
+                    >
+                      <PackagePlus size={14} />
+                      Add
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Save button */}
+                <div className="flex justify-end pt-2">
+                  <Button
+                    data-ocid="admin.social.save_button"
+                    onClick={handleSaveSocialLinks}
+                    disabled={isSavingSocial}
+                    className="admin-add-btn gap-2 font-semibold"
+                  >
+                    {isSavingSocial ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : null}
+                    Save Social Media Links
                   </Button>
                 </div>
               </div>
