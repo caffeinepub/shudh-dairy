@@ -1,4 +1,4 @@
-import Migration "migration";
+
 import Array "mo:core/Array";
 import Float "mo:core/Float";
 import Iter "mo:core/Iter";
@@ -9,7 +9,7 @@ import Time "mo:core/Time";
 import MixinStorage "blob-storage/Mixin";
 import Storage "blob-storage/Storage";
 
-(with migration = Migration.run)
+
 actor {
   include MixinStorage();
 

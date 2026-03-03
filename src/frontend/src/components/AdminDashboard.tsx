@@ -291,10 +291,9 @@ export function AdminDashboard() {
     }
     setIsSaving(true);
     try {
-      // Build ExternalBlob from imageUrl — stored in backend for persistence across deployments
-      const imageBlob = formData.imageUrl
-        ? ExternalBlob.fromURL(formData.imageUrl)
-        : ExternalBlob.fromURL("");
+      // Always use empty ExternalBlob for image in backend — images are stored in localStorage only
+      // Sending large base64 data URLs to the canister exceeds ICP message size limits
+      const imageBlob = ExternalBlob.fromURL("");
 
       if (editingProduct) {
         await actor.updateProduct(
@@ -308,11 +307,13 @@ export function AdminDashboard() {
           formData.inStock,
           imageBlob,
         );
-        // Also keep localStorage copy as fallback
+        // Save image to localStorage for display
         if (formData.imageUrl) {
           setProductImage(String(editingProduct.id), formData.imageUrl);
         }
         toast.success("Product updated successfully");
+        setModalOpen(false);
+        await loadProducts();
       } else {
         await actor.addProduct(
           token,
@@ -324,7 +325,7 @@ export function AdminDashboard() {
           formData.inStock,
           imageBlob,
         );
-        // After adding, reload products and find the new one by name+weight
+        // Reload products and save image for the newly added product
         const allProducts = await actor.getAllProducts();
         const newProduct = allProducts
           .slice()
@@ -338,9 +339,9 @@ export function AdminDashboard() {
         setProducts(allProducts);
         setProductImages(getProductImages());
         toast.success("Product added successfully");
+        setModalOpen(false);
+        await loadProducts();
       }
-      setModalOpen(false);
-      await loadProducts();
     } catch (err) {
       console.error("Product save error:", err);
       toast.error("Operation failed. Please try again.");
