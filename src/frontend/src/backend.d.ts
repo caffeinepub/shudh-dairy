@@ -7,14 +7,12 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface Product {
-    id: bigint;
-    weight: string;
-    inStock: boolean;
-    name: string;
-    description: string;
-    category: string;
-    price: number;
+export class ExternalBlob {
+    getBytes(): Promise<Uint8Array<ArrayBuffer>>;
+    getDirectURL(): string;
+    static fromURL(url: string): ExternalBlob;
+    static fromBytes(blob: Uint8Array<ArrayBuffer>): ExternalBlob;
+    withUploadProgress(onProgress: (percentage: number) => void): ExternalBlob;
 }
 export interface OrderItem {
     productWeight: string;
@@ -33,8 +31,18 @@ export interface Order {
     timestamp: bigint;
     items: Array<OrderItem>;
 }
+export interface Product {
+    id: bigint;
+    weight: string;
+    inStock: boolean;
+    name: string;
+    description: string;
+    category: string;
+    image: ExternalBlob;
+    price: number;
+}
 export interface backendInterface {
-    addProduct(_sessionToken: string, name: string, description: string, price: number, category: string, weight: string, inStock: boolean): Promise<void>;
+    addProduct(_sessionToken: string, name: string, description: string, price: number, category: string, weight: string, inStock: boolean, image: ExternalBlob): Promise<void>;
     adminLogin(username: string, password: string): Promise<boolean>;
     deleteProduct(_sessionToken: string, id: bigint): Promise<boolean>;
     getAllOrders(): Promise<Array<Order>>;
@@ -42,5 +50,5 @@ export interface backendInterface {
     getOrdersByPhone(phone: string): Promise<Array<Order>>;
     placeOrder(customerName: string, customerPhone: string, customerAddress: string, items: Array<OrderItem>, total: number): Promise<bigint>;
     updateOrderStatus(_sessionToken: string, orderId: bigint, status: string): Promise<boolean>;
-    updateProduct(_sessionToken: string, id: bigint, name: string, description: string, price: number, category: string, weight: string, inStock: boolean): Promise<boolean>;
+    updateProduct(_sessionToken: string, id: bigint, name: string, description: string, price: number, category: string, weight: string, inStock: boolean, image: ExternalBlob): Promise<boolean>;
 }

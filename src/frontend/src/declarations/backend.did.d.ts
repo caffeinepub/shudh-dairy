@@ -10,6 +10,7 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export type ExternalBlob = Uint8Array;
 export interface Order {
   'id' : bigint,
   'customerName' : string,
@@ -34,6 +35,7 @@ export interface Product {
   'name' : string,
   'description' : string,
   'category' : string,
+  'image' : ExternalBlob,
   'price' : number,
 }
 export interface _CaffeineStorageCreateCertificateResult {
@@ -64,7 +66,7 @@ export interface _SERVICE {
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   'addProduct' : ActorMethod<
-    [string, string, string, number, string, string, boolean],
+    [string, string, string, number, string, string, boolean, ExternalBlob],
     undefined
   >,
   'adminLogin' : ActorMethod<[string, string], boolean>,
@@ -78,7 +80,17 @@ export interface _SERVICE {
   >,
   'updateOrderStatus' : ActorMethod<[string, bigint, string], boolean>,
   'updateProduct' : ActorMethod<
-    [string, bigint, string, string, number, string, string, boolean],
+    [
+      string,
+      bigint,
+      string,
+      string,
+      number,
+      string,
+      string,
+      boolean,
+      ExternalBlob,
+    ],
     boolean
   >,
 }

@@ -1,3 +1,4 @@
+import { ExternalBlob } from "@/backend";
 import type { Product } from "@/backend.d";
 import type { Order as BackendOrder } from "@/backend.d";
 import { Button } from "@/components/ui/button";
@@ -125,7 +126,7 @@ type DisplayOrder = {
     price: number;
   }>;
   total: number;
-  status: "Pending" | "Confirmed" | "Delivered";
+  status: "Pending" | "Confirmed" | "Out for Delivery" | "Delivered";
   timestamp: number;
 };
 
@@ -143,7 +144,11 @@ function mapBackendOrder(o: BackendOrder): DisplayOrder {
       price: item.price,
     })),
     total: o.total,
-    status: o.status as "Pending" | "Confirmed" | "Delivered",
+    status: o.status as
+      | "Pending"
+      | "Confirmed"
+      | "Out for Delivery"
+      | "Delivered",
     timestamp: Number(o.timestamp) / 1_000_000,
   };
 }
@@ -180,14 +185,18 @@ export function AdminDashboard() {
   );
 
   const loadProducts = useCallback(async () => {
-    if (!actor) return;
+    if (!actor) {
+      setLoadingProducts(false);
+      return;
+    }
     setLoadingProducts(true);
     setLoadError(false);
     try {
       const data = await actor.getAllProducts();
       setProducts(data);
       setProductImages(getProductImages());
-    } catch {
+    } catch (err) {
+      console.error("Load products error:", err);
       setProducts([]);
       setProductImages(getProductImages());
       setLoadError(true);
@@ -221,7 +230,8 @@ export function AdminDashboard() {
 
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
-    const savedImage = productImages[String(product.id)] ?? "";
+    const backendUrl = product.image?.getDirectURL?.() ?? "";
+    const savedImage = backendUrl || productImages[String(product.id)] || "";
     setFormData({
       name: product.name,
       description: product.description,
@@ -272,9 +282,20 @@ export function AdminDashboard() {
   };
 
   const handleSave = async () => {
-    if (!validateForm() || !actor) return;
+    if (!validateForm()) return;
+    if (!actor) {
+      toast.error(
+        "Still connecting to server. Please wait a moment and try again.",
+      );
+      return;
+    }
     setIsSaving(true);
     try {
+      // Build ExternalBlob from imageUrl — stored in backend for persistence across deployments
+      const imageBlob = formData.imageUrl
+        ? ExternalBlob.fromURL(formData.imageUrl)
+        : ExternalBlob.fromURL("");
+
       if (editingProduct) {
         await actor.updateProduct(
           token,
@@ -285,8 +306,9 @@ export function AdminDashboard() {
           formData.category,
           formData.weight,
           formData.inStock,
+          imageBlob,
         );
-        // Save image for this product
+        // Also keep localStorage copy as fallback
         if (formData.imageUrl) {
           setProductImage(String(editingProduct.id), formData.imageUrl);
         }
@@ -300,6 +322,7 @@ export function AdminDashboard() {
           formData.category,
           formData.weight,
           formData.inStock,
+          imageBlob,
         );
         // After adding, reload products and find the new one by name+weight
         const allProducts = await actor.getAllProducts();
@@ -318,7 +341,8 @@ export function AdminDashboard() {
       }
       setModalOpen(false);
       await loadProducts();
-    } catch {
+    } catch (err) {
+      console.error("Product save error:", err);
       toast.error("Operation failed. Please try again.");
     } finally {
       setIsSaving(false);
@@ -334,7 +358,13 @@ export function AdminDashboard() {
   };
 
   const handleDelete = async () => {
-    if (!deleteTarget || !actor) return;
+    if (!deleteTarget) return;
+    if (!actor) {
+      toast.error(
+        "Still connecting to server. Please wait a moment and try again.",
+      );
+      return;
+    }
     setIsDeleting(true);
     try {
       await actor.deleteProduct(token, deleteTarget.id);
@@ -598,7 +628,7 @@ export function AdminDashboard() {
 
   const handleOrderStatusChange = async (
     orderId: number,
-    status: "Pending" | "Confirmed" | "Delivered",
+    status: "Pending" | "Confirmed" | "Out for Delivery" | "Delivered",
   ) => {
     if (!actor) return;
     try {
@@ -623,6 +653,13 @@ export function AdminDashboard() {
     const hh = String(d.getHours()).padStart(2, "0");
     const min = String(d.getMinutes()).padStart(2, "0");
     return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+  };
+
+  // Get image URL: prefer backend ExternalBlob URL, fall back to localStorage
+  const getProductImageUrl = (product: Product): string => {
+    const backendUrl = product.image?.getDirectURL?.();
+    if (backendUrl) return backendUrl;
+    return productImages[String(product.id)] ?? "";
   };
 
   // Show a connecting overlay while actor isn't ready yet
@@ -1010,9 +1047,9 @@ export function AdminDashboard() {
                       >
                         {/* Image */}
                         <div className="relative aspect-[4/3] bg-accent/20 overflow-hidden">
-                          {productImages[String(product.id)] ? (
+                          {getProductImageUrl(product) ? (
                             <img
-                              src={productImages[String(product.id)]}
+                              src={getProductImageUrl(product)}
                               alt={product.name}
                               className="w-full h-full object-cover"
                             />
@@ -1132,9 +1169,9 @@ export function AdminDashboard() {
                               className="admin-table-row"
                             >
                               <TableCell className="pl-5">
-                                {productImages[String(product.id)] ? (
+                                {getProductImageUrl(product) ? (
                                   <img
-                                    src={productImages[String(product.id)]}
+                                    src={getProductImageUrl(product)}
                                     alt={product.name}
                                     className="w-10 h-10 rounded-lg object-cover border border-border"
                                   />
@@ -1707,21 +1744,25 @@ export function AdminDashboard() {
                             </TableCell>
                             <TableCell>
                               <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${
                                   order.status === "Delivered"
                                     ? "admin-badge-instock"
-                                    : order.status === "Confirmed"
-                                      ? "admin-badge-confirmed"
-                                      : "admin-badge-pending"
+                                    : order.status === "Out for Delivery"
+                                      ? "bg-orange-100 text-orange-700 border border-orange-200"
+                                      : order.status === "Confirmed"
+                                        ? "admin-badge-confirmed"
+                                        : "admin-badge-pending"
                                 }`}
                               >
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full ${
                                     order.status === "Delivered"
                                       ? "admin-dot-instock"
-                                      : order.status === "Confirmed"
-                                        ? "admin-dot-confirmed"
-                                        : "admin-dot-pending"
+                                      : order.status === "Out for Delivery"
+                                        ? "bg-orange-500"
+                                        : order.status === "Confirmed"
+                                          ? "admin-dot-confirmed"
+                                          : "admin-dot-pending"
                                   }`}
                                 />
                                 {order.status}
@@ -1733,13 +1774,17 @@ export function AdminDashboard() {
                                 onValueChange={(v) =>
                                   handleOrderStatusChange(
                                     order.id,
-                                    v as "Pending" | "Confirmed" | "Delivered",
+                                    v as
+                                      | "Pending"
+                                      | "Confirmed"
+                                      | "Out for Delivery"
+                                      | "Delivered",
                                   )
                                 }
                               >
                                 <SelectTrigger
                                   data-ocid={`admin.orders.status.select.${i + 1}`}
-                                  className="admin-modal-input h-8 text-xs w-32"
+                                  className="admin-modal-input h-8 text-xs w-40"
                                 >
                                   <SelectValue />
                                 </SelectTrigger>
@@ -1749,6 +1794,9 @@ export function AdminDashboard() {
                                   </SelectItem>
                                   <SelectItem value="Confirmed">
                                     Confirmed
+                                  </SelectItem>
+                                  <SelectItem value="Out for Delivery">
+                                    Out for Delivery
                                   </SelectItem>
                                   <SelectItem value="Delivered">
                                     Delivered
@@ -2695,13 +2743,18 @@ export function AdminDashboard() {
               <Button
                 data-ocid="admin.products.save_button"
                 onClick={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || actorLoading}
                 className="admin-save-btn font-semibold"
               >
                 {isSaving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Saving…
+                  </>
+                ) : actorLoading && !actor ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting…
                   </>
                 ) : editingProduct ? (
                   "Save Changes"

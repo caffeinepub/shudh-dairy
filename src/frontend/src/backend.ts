@@ -89,14 +89,8 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface Product {
-    id: bigint;
-    weight: string;
-    inStock: boolean;
-    name: string;
-    description: string;
-    category: string;
-    price: number;
+export interface _CaffeineStorageRefillInformation {
+    proposed_top_up_amount?: bigint;
 }
 export interface OrderItem {
     productWeight: string;
@@ -119,12 +113,19 @@ export interface Order {
     timestamp: bigint;
     items: Array<OrderItem>;
 }
+export interface Product {
+    id: bigint;
+    weight: string;
+    inStock: boolean;
+    name: string;
+    description: string;
+    category: string;
+    image: ExternalBlob;
+    price: number;
+}
 export interface _CaffeineStorageRefillResult {
     success?: boolean;
     topped_up_amount?: bigint;
-}
-export interface _CaffeineStorageRefillInformation {
-    proposed_top_up_amount?: bigint;
 }
 export interface backendInterface {
     _caffeineStorageBlobIsLive(hash: Uint8Array): Promise<boolean>;
@@ -133,7 +134,7 @@ export interface backendInterface {
     _caffeineStorageCreateCertificate(blobHash: string): Promise<_CaffeineStorageCreateCertificateResult>;
     _caffeineStorageRefillCashier(refillInformation: _CaffeineStorageRefillInformation | null): Promise<_CaffeineStorageRefillResult>;
     _caffeineStorageUpdateGatewayPrincipals(): Promise<void>;
-    addProduct(_sessionToken: string, name: string, description: string, price: number, category: string, weight: string, inStock: boolean): Promise<void>;
+    addProduct(_sessionToken: string, name: string, description: string, price: number, category: string, weight: string, inStock: boolean, image: ExternalBlob): Promise<void>;
     adminLogin(username: string, password: string): Promise<boolean>;
     deleteProduct(_sessionToken: string, id: bigint): Promise<boolean>;
     getAllOrders(): Promise<Array<Order>>;
@@ -141,9 +142,9 @@ export interface backendInterface {
     getOrdersByPhone(phone: string): Promise<Array<Order>>;
     placeOrder(customerName: string, customerPhone: string, customerAddress: string, items: Array<OrderItem>, total: number): Promise<bigint>;
     updateOrderStatus(_sessionToken: string, orderId: bigint, status: string): Promise<boolean>;
-    updateProduct(_sessionToken: string, id: bigint, name: string, description: string, price: number, category: string, weight: string, inStock: boolean): Promise<boolean>;
+    updateProduct(_sessionToken: string, id: bigint, name: string, description: string, price: number, category: string, weight: string, inStock: boolean, image: ExternalBlob): Promise<boolean>;
 }
-import type { _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
+import type { ExternalBlob as _ExternalBlob, Product as _Product, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _caffeineStorageBlobIsLive(arg0: Uint8Array): Promise<boolean> {
@@ -230,17 +231,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addProduct(arg0: string, arg1: string, arg2: string, arg3: number, arg4: string, arg5: string, arg6: boolean): Promise<void> {
+    async addProduct(arg0: string, arg1: string, arg2: string, arg3: number, arg4: string, arg5: string, arg6: boolean, arg7: ExternalBlob): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addProduct(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
+                const result = await this.actor.addProduct(arg0, arg1, arg2, arg3, arg4, arg5, arg6, await to_candid_ExternalBlob_n8(this._uploadFile, this._downloadFile, arg7));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addProduct(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
+            const result = await this.actor.addProduct(arg0, arg1, arg2, arg3, arg4, arg5, arg6, await to_candid_ExternalBlob_n8(this._uploadFile, this._downloadFile, arg7));
             return result;
         }
     }
@@ -290,14 +291,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllProducts();
-                return result;
+                return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllProducts();
-            return result;
+            return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
         }
     }
     async getOrdersByPhone(arg0: string): Promise<Array<Order>> {
@@ -342,20 +343,26 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateProduct(arg0: string, arg1: bigint, arg2: string, arg3: string, arg4: number, arg5: string, arg6: string, arg7: boolean): Promise<boolean> {
+    async updateProduct(arg0: string, arg1: bigint, arg2: string, arg3: string, arg4: number, arg5: string, arg6: string, arg7: boolean, arg8: ExternalBlob): Promise<boolean> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateProduct(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+                const result = await this.actor.updateProduct(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, await to_candid_ExternalBlob_n8(this._uploadFile, this._downloadFile, arg8));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateProduct(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+            const result = await this.actor.updateProduct(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, await to_candid_ExternalBlob_n8(this._uploadFile, this._downloadFile, arg8));
             return result;
         }
     }
+}
+async function from_candid_ExternalBlob_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ExternalBlob): Promise<ExternalBlob> {
+    return await _downloadFile(value);
+}
+async function from_candid_Product_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Product): Promise<Product> {
+    return await from_candid_record_n11(_uploadFile, _downloadFile, value);
 }
 function from_candid__CaffeineStorageRefillResult_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: __CaffeineStorageRefillResult): _CaffeineStorageRefillResult {
     return from_candid_record_n5(_uploadFile, _downloadFile, value);
@@ -365,6 +372,36 @@ function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 }
 function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
     return value.length === 0 ? null : value[0];
+}
+async function from_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: bigint;
+    weight: string;
+    inStock: boolean;
+    name: string;
+    description: string;
+    category: string;
+    image: _ExternalBlob;
+    price: number;
+}): Promise<{
+    id: bigint;
+    weight: string;
+    inStock: boolean;
+    name: string;
+    description: string;
+    category: string;
+    image: ExternalBlob;
+    price: number;
+}> {
+    return {
+        id: value.id,
+        weight: value.weight,
+        inStock: value.inStock,
+        name: value.name,
+        description: value.description,
+        category: value.category,
+        image: await from_candid_ExternalBlob_n12(_uploadFile, _downloadFile, value.image),
+        price: value.price
+    };
 }
 function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     success: [] | [boolean];
@@ -377,6 +414,12 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
         success: record_opt_to_undefined(from_candid_opt_n6(_uploadFile, _downloadFile, value.success)),
         topped_up_amount: record_opt_to_undefined(from_candid_opt_n7(_uploadFile, _downloadFile, value.topped_up_amount))
     };
+}
+async function from_candid_vec_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Product>): Promise<Array<Product>> {
+    return await Promise.all(value.map(async (x)=>await from_candid_Product_n10(_uploadFile, _downloadFile, x)));
+}
+async function to_candid_ExternalBlob_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ExternalBlob): Promise<_ExternalBlob> {
+    return await _uploadFile(value);
 }
 function to_candid__CaffeineStorageRefillInformation_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CaffeineStorageRefillInformation): __CaffeineStorageRefillInformation {
     return to_candid_record_n3(_uploadFile, _downloadFile, value);

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Circle,
   Clock,
+  Copy,
   Loader2,
   Package,
   Search,
@@ -33,7 +34,7 @@ type Order = {
   customerAddress: string;
   items: OrderItemDisplay[];
   total: number;
-  status: "Pending" | "Confirmed" | "Delivered";
+  status: "Pending" | "Confirmed" | "Out for Delivery" | "Delivered";
   timestamp: number;
 };
 
@@ -51,7 +52,11 @@ function mapBackendOrder(o: BackendOrder): Order {
       price: item.price,
     })),
     total: o.total,
-    status: o.status as "Pending" | "Confirmed" | "Delivered",
+    status: o.status as
+      | "Pending"
+      | "Confirmed"
+      | "Out for Delivery"
+      | "Delivered",
     timestamp: Number(o.timestamp) / 1_000_000,
   };
 }
@@ -78,12 +83,13 @@ function formatINR(amount: number): string {
 
 // ── Progress step definitions ─────────────────────────────────────────────────
 
-type StepKey = "placed" | "confirmed" | "delivered";
+type StepKey = "placed" | "confirmed" | "out_for_delivery" | "delivered";
 
 const STEPS: { key: StepKey; label: string; icon: typeof Clock }[] = [
   { key: "placed", label: "Order Placed", icon: Package },
   { key: "confirmed", label: "Confirmed", icon: Clock },
-  { key: "delivered", label: "Delivered", icon: Truck },
+  { key: "out_for_delivery", label: "Out for Delivery", icon: Truck },
+  { key: "delivered", label: "Delivered", icon: CheckCircle2 },
 ];
 
 function getStepStatus(
@@ -91,11 +97,23 @@ function getStepStatus(
   orderStatus: Order["status"],
 ): "complete" | "active" | "pending" {
   if (stepKey === "placed") return "complete";
+
   if (stepKey === "confirmed") {
-    if (orderStatus === "Delivered") return "complete";
-    if (orderStatus === "Confirmed") return "active";
+    if (
+      orderStatus === "Confirmed" ||
+      orderStatus === "Out for Delivery" ||
+      orderStatus === "Delivered"
+    )
+      return orderStatus === "Confirmed" ? "active" : "complete";
     return "pending";
   }
+
+  if (stepKey === "out_for_delivery") {
+    if (orderStatus === "Delivered") return "complete";
+    if (orderStatus === "Out for Delivery") return "active";
+    return "pending";
+  }
+
   // delivered
   if (orderStatus === "Delivered") return "active";
   return "pending";
@@ -109,12 +127,15 @@ function StatusBadge({ status }: { status: Order["status"] }) {
       "bg-amber-50 text-amber-700 border border-amber-200 ring-1 ring-amber-100",
     Confirmed:
       "bg-blue-50 text-blue-700 border border-blue-200 ring-1 ring-blue-100",
+    "Out for Delivery":
+      "bg-orange-50 text-orange-700 border border-orange-200 ring-1 ring-orange-100",
     Delivered:
       "bg-green-50 text-green-700 border border-green-200 ring-1 ring-green-100",
   };
   const dots: Record<Order["status"], string> = {
     Pending: "bg-amber-500",
     Confirmed: "bg-blue-500",
+    "Out for Delivery": "bg-orange-500",
     Delivered: "bg-green-500",
   };
   return (
@@ -130,10 +151,19 @@ function StatusBadge({ status }: { status: Order["status"] }) {
 // ── Shipping progress tracker ─────────────────────────────────────────────────
 
 function ShippingProgress({ status }: { status: Order["status"] }) {
+  const progressWidth =
+    status === "Delivered"
+      ? "100%"
+      : status === "Out for Delivery"
+        ? "66.67%"
+        : status === "Confirmed"
+          ? "33.33%"
+          : "0%";
+
   return (
     <div className="relative flex items-start justify-between mt-4">
       {/* Connecting lines */}
-      <div className="absolute top-4 left-[calc(16.67%)] right-[calc(16.67%)] h-0.5 z-0">
+      <div className="absolute top-4 left-[calc(12.5%)] right-[calc(12.5%)] h-0.5 z-0">
         <div className="relative h-full">
           {/* Base line */}
           <div className="absolute inset-0 bg-border rounded-full" />
@@ -142,14 +172,7 @@ function ShippingProgress({ status }: { status: Order["status"] }) {
             className="absolute inset-y-0 left-0 rounded-full"
             style={{ background: "oklch(var(--primary))" }}
             initial={{ width: "0%" }}
-            animate={{
-              width:
-                status === "Delivered"
-                  ? "100%"
-                  : status === "Confirmed"
-                    ? "50%"
-                    : "0%",
-            }}
+            animate={{ width: progressWidth }}
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.3 }}
           />
         </div>
@@ -212,9 +235,62 @@ function ShippingProgress({ status }: { status: Order["status"] }) {
   );
 }
 
+// ── Estimated delivery info ───────────────────────────────────────────────────
+
+function DeliveryInfoBox({ status }: { status: Order["status"] }) {
+  const config: Record<
+    Order["status"],
+    { icon: typeof Clock; text: string; classes: string }
+  > = {
+    Pending: {
+      icon: Clock,
+      text: "We are processing your order. Expected delivery in 2–3 business days.",
+      classes:
+        "bg-amber-50 border-amber-200 text-amber-800 [&_svg]:text-amber-600",
+    },
+    Confirmed: {
+      icon: Package,
+      text: "Your order is confirmed! Expected delivery in 1–2 business days.",
+      classes: "bg-blue-50 border-blue-200 text-blue-800 [&_svg]:text-blue-600",
+    },
+    "Out for Delivery": {
+      icon: Truck,
+      text: "Your parcel is on the way! Expected delivery today or tomorrow.",
+      classes:
+        "bg-orange-50 border-orange-200 text-orange-800 [&_svg]:text-orange-600",
+    },
+    Delivered: {
+      icon: CheckCircle2,
+      text: "Your order has been delivered. Thank you for shopping with us!",
+      classes:
+        "bg-green-50 border-green-200 text-green-800 [&_svg]:text-green-600",
+    },
+  };
+
+  const { icon: Icon, text, classes } = config[status];
+
+  return (
+    <div
+      className={`flex items-start gap-3 rounded-xl border px-4 py-3 mt-4 ${classes}`}
+    >
+      <Icon size={16} className="shrink-0 mt-0.5" />
+      <p className="text-xs font-medium leading-relaxed">{text}</p>
+    </div>
+  );
+}
+
 // ── Order card ─────────────────────────────────────────────────────────────────
 
 function OrderCard({ order, index }: { order: Order; index: number }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(String(order.id)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <motion.div
       data-ocid={`track.result.item.${index}`}
@@ -226,14 +302,32 @@ function OrderCard({ order, index }: { order: Order; index: number }) {
       {/* Card header */}
       <div className="px-5 py-4 border-b border-border bg-accent/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-display text-base font-bold text-foreground">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-display text-lg font-bold text-foreground tracking-wide">
               Order #{order.id}
             </span>
+            <button
+              type="button"
+              onClick={handleCopyId}
+              title="Copy order ID"
+              aria-label="Copy order ID"
+              className="w-7 h-7 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+            >
+              {copied ? (
+                <CheckCircle2 size={13} className="text-green-600" />
+              ) : (
+                <Copy size={13} />
+              )}
+            </button>
             <StatusBadge status={order.status} />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             Placed on {formatDate(order.timestamp)}
+            {copied && (
+              <span className="ml-2 text-green-600 font-medium">
+                ✓ ID Copied!
+              </span>
+            )}
           </p>
         </div>
         <div className="text-right">
@@ -273,7 +367,7 @@ function OrderCard({ order, index }: { order: Order; index: number }) {
           ))}
         </ul>
 
-        {/* Delivery info */}
+        {/* Delivery address */}
         <div className="text-xs text-muted-foreground bg-accent/30 rounded-xl px-3 py-2 mb-2">
           <span className="font-semibold text-foreground">Deliver to:</span>{" "}
           {order.customerAddress}
@@ -281,6 +375,9 @@ function OrderCard({ order, index }: { order: Order; index: number }) {
 
         {/* Shipping progress */}
         <ShippingProgress status={order.status} />
+
+        {/* Estimated delivery info box */}
+        <DeliveryInfoBox status={order.status} />
       </div>
     </motion.div>
   );

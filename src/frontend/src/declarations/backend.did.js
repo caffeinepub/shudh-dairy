@@ -19,6 +19,7 @@ export const _CaffeineStorageRefillResult = IDL.Record({
   'success' : IDL.Opt(IDL.Bool),
   'topped_up_amount' : IDL.Opt(IDL.Nat),
 });
+export const ExternalBlob = IDL.Vec(IDL.Nat8);
 export const OrderItem = IDL.Record({
   'productWeight' : IDL.Text,
   'productId' : IDL.Nat,
@@ -43,6 +44,7 @@ export const Product = IDL.Record({
   'name' : IDL.Text,
   'description' : IDL.Text,
   'category' : IDL.Text,
+  'image' : ExternalBlob,
   'price' : IDL.Float64,
 });
 
@@ -74,7 +76,16 @@ export const idlService = IDL.Service({
     ),
   '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   'addProduct' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Float64, IDL.Text, IDL.Text, IDL.Bool],
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Float64,
+        IDL.Text,
+        IDL.Text,
+        IDL.Bool,
+        ExternalBlob,
+      ],
       [],
       [],
     ),
@@ -99,6 +110,7 @@ export const idlService = IDL.Service({
         IDL.Text,
         IDL.Text,
         IDL.Bool,
+        ExternalBlob,
       ],
       [IDL.Bool],
       [],
@@ -119,6 +131,7 @@ export const idlFactory = ({ IDL }) => {
     'success' : IDL.Opt(IDL.Bool),
     'topped_up_amount' : IDL.Opt(IDL.Nat),
   });
+  const ExternalBlob = IDL.Vec(IDL.Nat8);
   const OrderItem = IDL.Record({
     'productWeight' : IDL.Text,
     'productId' : IDL.Nat,
@@ -143,6 +156,7 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'description' : IDL.Text,
     'category' : IDL.Text,
+    'image' : ExternalBlob,
     'price' : IDL.Float64,
   });
   
@@ -182,6 +196,7 @@ export const idlFactory = ({ IDL }) => {
           IDL.Text,
           IDL.Text,
           IDL.Bool,
+          ExternalBlob,
         ],
         [],
         [],
@@ -211,6 +226,7 @@ export const idlFactory = ({ IDL }) => {
           IDL.Text,
           IDL.Text,
           IDL.Bool,
+          ExternalBlob,
         ],
         [IDL.Bool],
         [],

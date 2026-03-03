@@ -47,8 +47,9 @@ function mapBackendProduct(
     Ghee: "/assets/generated/ghee-cow.dim_600x600.jpg",
     Paneer: "/assets/generated/paneer-fresh.dim_600x600.jpg",
   };
-  // Priority: custom uploaded image > category default
-  const customImage = productImages[String(p.id)];
+  // Priority: backend ExternalBlob URL > localStorage custom image > category default
+  const backendImageUrl = p.image?.getDirectURL?.();
+  const customImage = backendImageUrl || productImages[String(p.id)];
   return {
     id: Number(p.id),
     name: p.name,

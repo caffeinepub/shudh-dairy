@@ -14,10 +14,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { saveOrder } from "@/utils/orderStorage";
 import {
   CheckCircle2,
+  Copy,
   MessageCircle,
   Minus,
   Plus,
   ShoppingBag,
+  Truck,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -59,6 +61,156 @@ type CheckoutForm = {
 };
 
 type FormErrors = Partial<CheckoutForm>;
+
+// ── ConfirmationStep subcomponent ───────────────────────────────────────────
+
+type ConfirmationStepProps = {
+  form: CheckoutForm;
+  placedOrderId: number | null;
+  cartDetails: (CartItem & { product: DairyProduct })[];
+  total: number;
+  formatINR: (amount: number) => string;
+  onContinueShopping: () => void;
+};
+
+function ConfirmationStep({
+  form,
+  placedOrderId,
+  cartDetails,
+  total,
+  formatINR,
+  onContinueShopping,
+}: ConfirmationStepProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyId = () => {
+    if (!placedOrderId) return;
+    navigator.clipboard.writeText(String(placedOrderId)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div data-ocid="cart.checkout.confirmation" className="text-center py-4">
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", stiffness: 380, damping: 22 }}
+        className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-5"
+      >
+        <CheckCircle2 size={34} className="text-green-600" />
+      </motion.div>
+
+      <h2 className="font-display text-2xl font-bold text-foreground mb-1">
+        Order Placed!
+      </h2>
+      <p className="text-muted-foreground text-sm mb-4">
+        Thank you, {form.name}!
+      </p>
+
+      {/* Prominent Tracking ID */}
+      {placedOrderId && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.15 }}
+          className="flex items-center justify-center gap-2 mb-3"
+        >
+          <span className="inline-flex items-center gap-2 bg-primary/10 border-2 border-primary/30 text-primary font-display text-xl font-bold px-5 py-2.5 rounded-2xl tracking-wide">
+            ORDER #{placedOrderId}
+          </span>
+          <button
+            type="button"
+            data-ocid="cart.checkout.copy_order_id_button"
+            onClick={handleCopyId}
+            title="Copy order ID"
+            aria-label="Copy order ID"
+            className="w-9 h-9 rounded-xl border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+          >
+            {copied ? (
+              <CheckCircle2 size={15} className="text-green-600" />
+            ) : (
+              <Copy size={15} />
+            )}
+          </button>
+        </motion.div>
+      )}
+      {placedOrderId && (
+        <p className="text-xs text-muted-foreground mb-1">
+          {copied
+            ? "✓ Copied to clipboard!"
+            : "Use this ID to track your order"}
+        </p>
+      )}
+
+      {/* Estimated delivery info box */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.25 }}
+        className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl px-4 py-3 mb-5 text-left"
+      >
+        <Truck size={18} className="text-emerald-600 shrink-0" />
+        <p className="text-sm font-medium leading-snug">
+          Expected delivery in{" "}
+          <span className="font-bold">2–3 business days</span>
+        </p>
+      </motion.div>
+
+      {/* Items summary */}
+      <div className="bg-accent/30 rounded-xl p-4 text-left space-y-2 mb-4">
+        {cartDetails.map((item) => (
+          <div
+            key={item.productId}
+            className="flex justify-between items-center text-sm"
+          >
+            <span className="text-foreground">
+              {item.quantity} × {item.product.name}{" "}
+              <span className="text-muted-foreground">
+                {item.product.weight}
+              </span>
+            </span>
+            <span className="text-primary font-semibold font-display">
+              {formatINR(item.product.price * item.quantity)}
+            </span>
+          </div>
+        ))}
+        <Separator />
+        <div className="flex justify-between items-center">
+          <span className="font-bold text-foreground text-sm">Total</span>
+          <span className="font-display text-lg font-bold text-primary">
+            {formatINR(total)}
+          </span>
+        </div>
+      </div>
+
+      <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+        We will call you on{" "}
+        <strong className="text-foreground">{form.phone}</strong> to confirm
+        your order and delivery details.
+      </p>
+
+      <Button
+        data-ocid="cart.checkout.continue_button"
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-12 rounded-xl"
+        onClick={onContinueShopping}
+      >
+        Continue Shopping
+      </Button>
+
+      <a
+        href="/track-order"
+        data-ocid="cart.checkout.track_order_link"
+        className="mt-3 w-full h-10 rounded-xl border border-border flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary hover:border-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      >
+        Track Your Order
+      </a>
+    </div>
+  );
+}
+
+// ── CartDrawer ───────────────────────────────────────────────────────────────
 
 export function CartDrawer({
   isOpen,
@@ -602,82 +754,14 @@ export function CartDrawer({
             </>
           ) : (
             /* ── ORDER CONFIRMATION ──────────────────────────────────────── */
-            <div
-              data-ocid="cart.checkout.confirmation"
-              className="text-center py-4"
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-5"
-              >
-                <CheckCircle2 size={34} className="text-green-600" />
-              </motion.div>
-
-              <h2 className="font-display text-2xl font-bold text-foreground mb-1">
-                Order Placed!
-              </h2>
-              <p className="text-muted-foreground text-sm mb-1">
-                Thank you, {form.name}!
-              </p>
-              {placedOrderId && (
-                <p className="text-xs text-muted-foreground mb-5">
-                  Order #{placedOrderId}
-                </p>
-              )}
-
-              {/* Items summary */}
-              <div className="bg-accent/30 rounded-xl p-4 text-left space-y-2 mb-4">
-                {cartDetails.map((item) => (
-                  <div
-                    key={item.productId}
-                    className="flex justify-between items-center text-sm"
-                  >
-                    <span className="text-foreground">
-                      {item.quantity} × {item.product.name}{" "}
-                      <span className="text-muted-foreground">
-                        {item.product.weight}
-                      </span>
-                    </span>
-                    <span className="text-primary font-semibold font-display">
-                      {formatINR(item.product.price * item.quantity)}
-                    </span>
-                  </div>
-                ))}
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-foreground text-sm">
-                    Total
-                  </span>
-                  <span className="font-display text-lg font-bold text-primary">
-                    {formatINR(total)}
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-                We will call you on{" "}
-                <strong className="text-foreground">{form.phone}</strong> to
-                confirm your order and delivery details.
-              </p>
-
-              <Button
-                data-ocid="cart.checkout.continue_button"
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-12 rounded-xl"
-                onClick={handleContinueShopping}
-              >
-                Continue Shopping
-              </Button>
-
-              <a
-                href="/track-order"
-                data-ocid="cart.checkout.track_order_link"
-                className="mt-3 w-full h-10 rounded-xl border border-border flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary hover:border-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              >
-                Track Your Order
-              </a>
-            </div>
+            <ConfirmationStep
+              form={form}
+              placedOrderId={placedOrderId}
+              cartDetails={cartDetails}
+              total={total}
+              formatINR={formatINR}
+              onContinueShopping={handleContinueShopping}
+            />
           )}
         </DialogContent>
       </Dialog>
