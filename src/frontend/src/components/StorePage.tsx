@@ -77,14 +77,17 @@ export function StorePage() {
   }, []);
 
   // ── Backend actor ──────────────────────────────────────────────────────────
-  const { actor, isFetching: actorLoading } = useActor();
+  const { actor } = useActor();
 
   // ── Products from backend ──────────────────────────────────────────────────
   const [products, setProducts] = useState<DairyProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
   const loadProductsFromBackend = useCallback(async () => {
-    if (!actor) return;
+    if (!actor) {
+      setIsLoadingProducts(false);
+      return;
+    }
     setIsLoadingProducts(true);
     try {
       const data = await actor.getAllProducts();
@@ -109,10 +112,10 @@ export function StorePage() {
   }, [actor]);
 
   useEffect(() => {
-    if (actor && !actorLoading) {
+    if (actor) {
       void loadProductsFromBackend();
     }
-  }, [actor, actorLoading, loadProductsFromBackend]);
+  }, [actor, loadProductsFromBackend]);
 
   // Re-read products + social links + bg image when page is focused (e.g. after admin update)
   useEffect(() => {

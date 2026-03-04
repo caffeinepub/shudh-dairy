@@ -90,6 +90,59 @@ import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+// ── Image compression helper ───────────────────────────────────────────────
+async function compressImageToBytes(
+  file: File,
+  maxDim: number,
+  quality: number,
+): Promise<Uint8Array<ArrayBuffer>> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image() as HTMLImageElement;
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("No canvas context"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Canvas toBlob failed"));
+            return;
+          }
+          blob
+            .arrayBuffer()
+            .then((buf) => resolve(new Uint8Array(buf as ArrayBuffer)))
+            .catch(reject);
+        },
+        "image/jpeg",
+        quality,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Image load failed"));
+    };
+    img.src = url;
+  });
+}
+
 // ── Backend product display type ───────────────────────────────────────────
 type BackendProduct = {
   id: number;
@@ -313,9 +366,13 @@ export function AdminDashboard() {
       // Build the ExternalBlob for the image
       let imageBlob: ExternalBlob;
       if (formData.imageFile) {
-        const bytes = new Uint8Array(await formData.imageFile.arrayBuffer());
-        imageBlob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) =>
-          setFormData((p) => ({ ...p, uploadProgress: pct })),
+        const compressedBytes = await compressImageToBytes(
+          formData.imageFile,
+          800,
+          0.75,
+        );
+        imageBlob = ExternalBlob.fromBytes(compressedBytes).withUploadProgress(
+          (pct) => setFormData((p) => ({ ...p, uploadProgress: pct })),
         );
       } else if (editingProduct?.imageBlob) {
         // Keep existing image when editing without selecting a new one
@@ -2734,7 +2791,7 @@ export function AdminDashboard() {
                 onClick={() => {
                   void handleSave();
                 }}
-                disabled={isSaving || actorLoading || !actor}
+                disabled={isSaving || !actor}
                 className="admin-save-btn font-semibold"
               >
                 {isSaving ? (

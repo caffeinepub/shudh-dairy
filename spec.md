@@ -2,32 +2,37 @@
 
 ## Current State
 
-A full e-commerce store for dairy products (Ghee and Paneer). The store has:
-- Public storefront with product listing, cart, checkout, order tracking
-- Admin panel with product management, orders, store settings, founder info, social media, security
-- Backend using blob-storage component for product images
-
-The root issue: the backend uses `var products = List.empty<Product>()` (volatile in-memory) alongside `stable var stableProducts`. On every canister upgrade/restart, the in-memory list resets to empty. Products are never reloaded from stableProducts on startup. This causes products to disappear after every deployment.
-
-A secondary issue: image data is passed as `Storage.ExternalBlob` to the backend canister, which exceeds ICP message size limits when base64 data URLs are involved, causing "Operation failed" errors.
+A full e-commerce dairy store with:
+- Public StorePage showing products loaded from backend canister via `actor.getAllProducts()`
+- Admin panel at `/admin/dashboard` for managing products, orders, settings, social media, founder info, and security
+- Products stored permanently in backend using stable Motoko variables
+- Product images stored via blob-storage component (`ExternalBlob`)
+- The `addProduct` and `updateProduct` backend calls accept `ExternalBlob` as the image field
+- In the admin's `handleSave`, images are uploaded with `ExternalBlob.fromBytes(bytes).withUploadProgress(...)`
+- `StorePage` loads products when `actor` is available and `!actorLoading`
+- `getDirectURL()` is called on the product's ExternalBlob to get the image URL
 
 ## Requested Changes (Diff)
 
 ### Add
-- Nothing new — pure fix
+- Nothing new
 
 ### Modify
-- Backend: remove blob-storage dependency entirely; store product images as plain `Text` (imageUrl); all product/order data in stable variables only; no in-memory lists
-- Backend: `addProduct` returns the new product's `Nat` id so the frontend can link the image immediately
-- Frontend: update all backend calls to pass `imageUrl: Text` instead of `ExternalBlob`; images stored in localStorage keyed by product id
+- **StorePage**: Fix products not appearing -- the `useEffect` dependency on both `actor` and `actorLoading` creates a timing gap where products never load; fix by triggering load whenever `actor` changes (is non-null), regardless of `actorLoading` state. Also ensure a fallback category image is shown if `getDirectURL()` returns empty string.
+- **AdminDashboard**: Fix product photo upload -- images are currently uploaded as raw bytes which can exceed ICP message limits for large photos. Fix by resizing/compressing images to max 800x800 before converting to bytes, and using `ExternalBlob.fromBytes(compressedBytes)`. Also ensure the Save button is never disabled due to actor connection state when actor is already available.
+- **AdminDashboard**: Fix the `Save` button being disabled when `actorLoading` is true but `actor` is already present -- the button should only be disabled when `actor` is actually null, not when `actorLoading` is true.
 
 ### Remove
-- Backend: remove blob-storage Mixin import and ExternalBlob image field from Product type
-- Backend: remove volatile `var products` and `var orders` List variables
+- Nothing
 
 ## Implementation Plan
 
-1. Regenerate backend with stable-only storage, imageUrl as Text, addProduct returns Nat id
-2. Update frontend AdminDashboard to call addProduct/updateProduct with imageUrl string
-3. Update frontend StorePage to read product.imageUrl (string) instead of ExternalBlob
-4. Ensure fallback category images still work when imageUrl is empty
+1. In `StorePage.tsx`:
+   - Change the `useEffect` to trigger `loadProductsFromBackend` when `actor` becomes non-null (remove dependency on `actorLoading`)
+   - In the `loadProductsFromBackend` function, use `p.image.getDirectURL() || categoryDefaultImage(p.category)` as the image (already done but verify)
+   - Add a retry mechanism: if `actor` is null after 2 seconds, retry loading
+
+2. In `AdminDashboard.tsx`:
+   - In `handleSave`, add image compression before upload: use Canvas API to resize image to max 800x800px and compress to JPEG 0.75 quality before converting to `Uint8Array`
+   - Change the Save button's `disabled` condition from `isSaving || actorLoading || !actor` to `isSaving || !actor`
+   - Ensure error messages are clear when image upload fails
