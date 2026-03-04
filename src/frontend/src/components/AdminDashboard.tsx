@@ -293,7 +293,8 @@ export function AdminDashboard() {
     try {
       // Always use empty ExternalBlob for image in backend — images are stored in localStorage only
       // Sending large base64 data URLs to the canister exceeds ICP message size limits
-      const imageBlob = ExternalBlob.fromURL("");
+      // Use fromBytes with empty array so getBytes() returns immediately without fetching a URL
+      const imageBlob = ExternalBlob.fromBytes(new Uint8Array(0));
 
       if (editingProduct) {
         await actor.updateProduct(

@@ -1,13 +1,11 @@
-
 import Array "mo:core/Array";
-import Float "mo:core/Float";
-import Iter "mo:core/Iter";
-import List "mo:core/List";
 import Nat "mo:core/Nat";
 import Text "mo:core/Text";
 import Time "mo:core/Time";
+import List "mo:core/List";
 import MixinStorage "blob-storage/Mixin";
 import Storage "blob-storage/Storage";
+
 
 
 actor {
@@ -46,14 +44,13 @@ actor {
   let adminUsername = "admin";
   let adminPassword = "sunrise2024";
 
-  var nextProductId = 1;
-  var nextOrderId = 1001;
+  var products = List.empty<Product>();
+  var orders = List.empty<Order>();
 
-  var stableProducts : [Product] = [];
-  var stableOrders : [Order] = [];
-
-  let products = List.fromArray<Product>(stableProducts);
-  let orders = List.fromArray<Order>(stableOrders);
+  stable var stableProducts : [Product] = [];
+  stable var stableOrders : [Order] = [];
+  stable var stableNextProductId : Nat = 1;
+  stable var stableNextOrderId : Nat = 1001;
 
   public query ({ caller }) func getAllProducts() : async [Product] {
     products.toArray();
@@ -69,7 +66,7 @@ actor {
 
   public shared ({ caller }) func addProduct(_sessionToken : Text, name : Text, description : Text, price : Float, category : Text, weight : Text, inStock : Bool, image : Storage.ExternalBlob) : async () {
     let newProduct : Product = {
-      id = nextProductId;
+      id = stableNextProductId;
       name;
       description;
       price;
@@ -80,7 +77,7 @@ actor {
     };
 
     products.add(newProduct);
-    nextProductId += 1;
+    stableNextProductId += 1;
     stableProducts := products.toArray();
   };
 
@@ -141,7 +138,7 @@ actor {
 
   public shared ({ caller }) func placeOrder(customerName : Text, customerPhone : Text, customerAddress : Text, items : [OrderItem], total : Float) : async Nat {
     let newOrder : Order = {
-      id = nextOrderId;
+      id = stableNextOrderId;
       customerName;
       customerPhone;
       customerAddress;
@@ -152,7 +149,7 @@ actor {
     };
 
     orders.add(newOrder);
-    nextOrderId += 1;
+    stableNextOrderId += 1;
     stableOrders := orders.toArray();
     newOrder.id;
   };
@@ -191,17 +188,5 @@ actor {
     } else {
       false;
     };
-  };
-
-  system func preupgrade() {
-    stableProducts := products.toArray();
-    stableOrders := orders.toArray();
-  };
-
-  system func postupgrade() {
-    products.clear();
-    products.addAll(stableProducts.values());
-    orders.clear();
-    orders.addAll(stableOrders.values());
   };
 };
