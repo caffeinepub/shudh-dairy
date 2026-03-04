@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import { useActor } from "@/hooks/useActor";
-import { getAllProducts as getLocalProducts } from "@/utils/productStore";
 import {
   applyTheme,
   getBgImage,
@@ -77,49 +76,56 @@ export function StorePage() {
     setBgImageState(getBgImage() || DEFAULT_BG);
   }, []);
 
-  // ── Backend actor (needed only for order placement in CartDrawer) ─────────
-  const { actor } = useActor();
+  // ── Backend actor ──────────────────────────────────────────────────────────
+  const { actor, isFetching: actorLoading } = useActor();
 
-  // ── Products from localStorage ─────────────────────────────────────────────
-  const [products, setProducts] = useState<DairyProduct[]>(() => {
-    const data = getLocalProducts();
-    return data.map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      price: p.price,
-      category: p.category as DairyProduct["category"],
-      weight: p.weight,
-      inStock: p.inStock,
-      image: p.imageUrl || categoryDefaultImage(p.category),
-    }));
-  });
-  const [isLoadingProducts] = useState(false);
+  // ── Products from backend ──────────────────────────────────────────────────
+  const [products, setProducts] = useState<DairyProduct[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
-  // Re-read products + social links + bg image when page is focused (e.g. after admin update)
-  useEffect(() => {
-    const onFocus = () => {
-      // Refresh products
-      const data = getLocalProducts();
+  const loadProductsFromBackend = useCallback(async () => {
+    if (!actor) return;
+    setIsLoadingProducts(true);
+    try {
+      const data = await actor.getAllProducts();
       setProducts(
         data.map((p) => ({
-          id: p.id,
+          id: Number(p.id),
           name: p.name,
           description: p.description,
           price: p.price,
           category: p.category as DairyProduct["category"],
           weight: p.weight,
           inStock: p.inStock,
-          image: p.imageUrl || categoryDefaultImage(p.category),
+          image: p.image.getDirectURL() || categoryDefaultImage(p.category),
         })),
       );
+    } catch {
+      // Keep empty products on error — don't show stale local data
+      setProducts([]);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  }, [actor]);
+
+  useEffect(() => {
+    if (actor && !actorLoading) {
+      void loadProductsFromBackend();
+    }
+  }, [actor, actorLoading, loadProductsFromBackend]);
+
+  // Re-read products + social links + bg image when page is focused (e.g. after admin update)
+  useEffect(() => {
+    const onFocus = () => {
+      // Refresh products from backend
+      void loadProductsFromBackend();
       // Refresh social links and bg image
       setSocialLinksForStore(getSocialLinks());
       setBgImageState(getBgImage() || DEFAULT_BG);
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, []);
+  }, [loadProductsFromBackend]);
 
   // ── Cart state ─────────────────────────────────────────────────────────────
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -540,10 +546,14 @@ export function StorePage() {
                   🥛
                 </div>
                 <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-                  No products found
+                  {products.length === 0
+                    ? "No products yet"
+                    : "No products found"}
                 </h3>
                 <p className="text-muted-foreground text-sm">
-                  Try a different category or search term.
+                  {products.length === 0
+                    ? "Products added from the admin panel will appear here."
+                    : "Try a different category or search term."}
                 </p>
               </motion.div>
             ) : (

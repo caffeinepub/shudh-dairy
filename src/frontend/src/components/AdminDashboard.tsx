@@ -1,3 +1,4 @@
+import { ExternalBlob } from "@/backend";
 import type { Order as BackendOrder } from "@/backend.d";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -35,13 +37,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useActor } from "@/hooks/useActor";
-import {
-  type LocalProduct,
-  addProduct as localAddProduct,
-  deleteProduct as localDeleteProduct,
-  getAllProducts as localGetAllProducts,
-  updateProduct as localUpdateProduct,
-} from "@/utils/productStore";
 import {
   type FounderInfo,
   type SocialLink,
@@ -95,6 +90,19 @@ import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+// ── Backend product display type ───────────────────────────────────────────
+type BackendProduct = {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  weight: string;
+  inStock: boolean;
+  imageUrl: string; // from ExternalBlob.getDirectURL()
+  imageBlob?: ExternalBlob; // original blob for re-use when editing without new image
+};
+
 type ProductFormData = {
   name: string;
   description: string;
@@ -102,7 +110,8 @@ type ProductFormData = {
   category: string;
   weight: string;
   inStock: boolean;
-  imageUrl: string;
+  imageFile: File | null; // newly selected file
+  uploadProgress: number; // 0-100
 };
 
 const emptyForm: ProductFormData = {
@@ -112,7 +121,8 @@ const emptyForm: ProductFormData = {
   category: "Ghee",
   weight: "",
   inStock: true,
-  imageUrl: "",
+  imageFile: null,
+  uploadProgress: 0,
 };
 
 // ── Order display type ─────────────────────────────────────────────────────
@@ -179,24 +189,53 @@ export function AdminDashboard() {
     }
   }, [token, navigate]);
 
-  // ── Product list state (localStorage-first) ────────────────────────────────
-  const [products, setProducts] = useState<LocalProduct[]>(() =>
-    localGetAllProducts(),
-  );
-  const loadingProducts = false;
-  const loadError = false;
+  // ── Product list state (backend) ────────────────────────────────────────────
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
-  const loadProducts = useCallback(() => {
-    setProducts(localGetAllProducts());
-  }, []);
+  const loadProducts = useCallback(async () => {
+    if (!actor) return;
+    setLoadingProducts(true);
+    setLoadError(false);
+    try {
+      const data = await actor.getAllProducts();
+      setProducts(
+        data.map((p) => ({
+          id: Number(p.id),
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          category: p.category,
+          weight: p.weight,
+          inStock: p.inStock,
+          imageUrl: p.image.getDirectURL(),
+          imageBlob: p.image,
+        })),
+      );
+    } catch {
+      setLoadError(true);
+      toast.error("Could not load products. Please try again.");
+    } finally {
+      setLoadingProducts(false);
+    }
+  }, [actor]);
+
+  useEffect(() => {
+    if (token && actor && !actorLoading) {
+      void loadProducts();
+    }
+  }, [token, actor, actorLoading, loadProducts]);
 
   // ── Add/Edit modal ─────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<LocalProduct | null>(
+  const [editingProduct, setEditingProduct] = useState<BackendProduct | null>(
     null,
   );
   const [formData, setFormData] = useState<ProductFormData>(emptyForm);
-  const [formErrors, setFormErrors] = useState<Partial<ProductFormData>>({});
+  const [formErrors, setFormErrors] = useState<
+    Partial<Record<keyof ProductFormData, string>>
+  >({});
   const [isSaving, setIsSaving] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -210,9 +249,8 @@ export function AdminDashboard() {
     setModalOpen(true);
   };
 
-  const openEditModal = (product: LocalProduct) => {
+  const openEditModal = (product: BackendProduct) => {
     setEditingProduct(product);
-    const savedImage = product.imageUrl || "";
     setFormData({
       name: product.name,
       description: product.description,
@@ -220,10 +258,11 @@ export function AdminDashboard() {
       category: product.category,
       weight: product.weight,
       inStock: product.inStock,
-      imageUrl: savedImage,
+      imageFile: null,
+      uploadProgress: 0,
     });
     setFormErrors({});
-    setImagePreview(savedImage);
+    setImagePreview(product.imageUrl || "");
     setModalOpen(true);
   };
 
@@ -234,10 +273,10 @@ export function AdminDashboard() {
     if (!file) return;
     setIsUploadingImage(true);
     try {
-      // Convert to base64 data URL for persistent storage across sessions
+      // Show local preview immediately
       const dataUrl = await fileToDataUrl(file);
       setImagePreview(dataUrl);
-      setFormData((p) => ({ ...p, imageUrl: dataUrl }));
+      setFormData((p) => ({ ...p, imageFile: file }));
     } catch {
       toast.error("Failed to load image. Please try again.");
     } finally {
@@ -246,7 +285,7 @@ export function AdminDashboard() {
   };
 
   const validateForm = (): boolean => {
-    const errors: Partial<ProductFormData> = {};
+    const errors: Partial<Record<keyof ProductFormData, string>> = {};
     if (!formData.name.trim()) errors.name = "Name is required";
     if (!formData.description.trim())
       errors.description = "Description is required";
@@ -262,59 +301,84 @@ export function AdminDashboard() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) return;
+    if (!actor) {
+      toast.error("Not connected to server. Please refresh.");
+      return;
+    }
     setIsSaving(true);
+    setFormData((p) => ({ ...p, uploadProgress: 0 }));
     try {
+      // Build the ExternalBlob for the image
+      let imageBlob: ExternalBlob;
+      if (formData.imageFile) {
+        const bytes = new Uint8Array(await formData.imageFile.arrayBuffer());
+        imageBlob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) =>
+          setFormData((p) => ({ ...p, uploadProgress: pct })),
+        );
+      } else if (editingProduct?.imageBlob) {
+        // Keep existing image when editing without selecting a new one
+        imageBlob = ExternalBlob.fromURL(
+          editingProduct.imageBlob.getDirectURL(),
+        );
+      } else {
+        imageBlob = ExternalBlob.fromBytes(new Uint8Array(0));
+      }
+
       if (editingProduct) {
-        localUpdateProduct(editingProduct.id, {
-          name: formData.name,
-          description: formData.description,
-          price: Number(formData.price),
-          category: formData.category,
-          weight: formData.weight,
-          inStock: formData.inStock,
-          imageUrl: formData.imageUrl,
-        });
+        await actor.updateProduct(
+          token,
+          BigInt(editingProduct.id),
+          formData.name,
+          formData.description,
+          Number(formData.price),
+          formData.category,
+          formData.weight,
+          formData.inStock,
+          imageBlob,
+        );
         toast.success("Product updated successfully");
       } else {
-        localAddProduct({
-          name: formData.name,
-          description: formData.description,
-          price: Number(formData.price),
-          category: formData.category,
-          weight: formData.weight,
-          inStock: formData.inStock,
-          imageUrl: formData.imageUrl,
-        });
+        await actor.addProduct(
+          token,
+          formData.name,
+          formData.description,
+          Number(formData.price),
+          formData.category,
+          formData.weight,
+          formData.inStock,
+          imageBlob,
+        );
         toast.success("Product added successfully");
       }
       setModalOpen(false);
-      loadProducts();
+      await loadProducts();
     } catch (err) {
       console.error("Product save error:", err);
       toast.error("Failed to save product. Please try again.");
     } finally {
       setIsSaving(false);
+      setFormData((p) => ({ ...p, uploadProgress: 0 }));
     }
   };
 
   // ── Delete confirmation ────────────────────────────────────────────────────
-  const [deleteTarget, setDeleteTarget] = useState<LocalProduct | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<BackendProduct | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const confirmDelete = (product: LocalProduct) => {
+  const confirmDelete = (product: BackendProduct) => {
     setDeleteTarget(product);
   };
 
-  const handleDelete = () => {
-    if (!deleteTarget) return;
+  const handleDelete = async () => {
+    if (!deleteTarget || !actor) return;
     setIsDeleting(true);
     try {
-      localDeleteProduct(deleteTarget.id);
+      await actor.deleteProduct(token, BigInt(deleteTarget.id));
       toast.success(`"${deleteTarget.name}" deleted`);
       setDeleteTarget(null);
-      loadProducts();
+      await loadProducts();
     } catch {
       toast.error("Delete failed. Please try again.");
     } finally {
@@ -599,8 +663,8 @@ export function AdminDashboard() {
     return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
   };
 
-  // Get image URL from localStorage product
-  const getProductImageUrl = (product: LocalProduct): string => {
+  // Get image URL from backend product
+  const getProductImageUrl = (product: BackendProduct): string => {
     return product.imageUrl || "";
   };
 
@@ -869,7 +933,9 @@ export function AdminDashboard() {
                     data-ocid="admin.products.button"
                     variant="ghost"
                     size="sm"
-                    onClick={loadProducts}
+                    onClick={() => {
+                      void loadProducts();
+                    }}
                     disabled={loadingProducts}
                     className="admin-refresh-btn gap-2 text-xs"
                     aria-label="Refresh products"
@@ -920,7 +986,9 @@ export function AdminDashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={loadProducts}
+                      onClick={() => {
+                        void loadProducts();
+                      }}
                       className="admin-retry-btn"
                     >
                       Try Again
@@ -2612,6 +2680,20 @@ export function AdminDashboard() {
                       <Upload size={14} />
                       {imagePreview ? "Change Photo" : "Upload Photo"}
                     </Button>
+                    {isSaving &&
+                      formData.uploadProgress > 0 &&
+                      formData.uploadProgress < 100 && (
+                        <div className="space-y-1">
+                          <Progress
+                            value={formData.uploadProgress}
+                            className="h-1.5"
+                          />
+                          <p className="text-xs admin-section-sub text-center">
+                            Uploading photo…{" "}
+                            {Math.round(formData.uploadProgress)}%
+                          </p>
+                        </div>
+                      )}
                     {imagePreview && (
                       <Button
                         type="button"
@@ -2619,7 +2701,7 @@ export function AdminDashboard() {
                         size="sm"
                         onClick={() => {
                           setImagePreview("");
-                          setFormData((p) => ({ ...p, imageUrl: "" }));
+                          setFormData((p) => ({ ...p, imageFile: null }));
                           if (imageInputRef.current)
                             imageInputRef.current.value = "";
                         }}
@@ -2649,8 +2731,10 @@ export function AdminDashboard() {
               </Button>
               <Button
                 data-ocid="admin.products.save_button"
-                onClick={handleSave}
-                disabled={isSaving || actorLoading}
+                onClick={() => {
+                  void handleSave();
+                }}
+                disabled={isSaving || actorLoading || !actor}
                 className="admin-save-btn font-semibold"
               >
                 {isSaving ? (
@@ -2708,7 +2792,9 @@ export function AdminDashboard() {
               </Button>
               <Button
                 data-ocid="admin.products.confirm_button"
-                onClick={handleDelete}
+                onClick={() => {
+                  void handleDelete();
+                }}
                 disabled={isDeleting}
                 className="admin-delete-confirm-btn font-semibold"
               >
