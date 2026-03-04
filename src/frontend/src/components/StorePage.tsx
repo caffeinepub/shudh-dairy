@@ -1,13 +1,12 @@
-import type { Product as BackendProduct } from "@/backend.d";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import { useActor } from "@/hooks/useActor";
+import { getAllProducts as getLocalProducts } from "@/utils/productStore";
 import {
   applyTheme,
   getBgImage,
   getLogoUrl,
-  getProductImages,
   getSocialLinks,
   getTheme,
 } from "@/utils/storeCustomization";
@@ -38,32 +37,14 @@ import { CartDrawer, type CartItem, type DairyProduct } from "./CartDrawer";
 import { FounderSection } from "./FounderSection";
 import { ProductCard } from "./ProductCard";
 
-// ─── Map backend product to DairyProduct ──────────────────────────────────────
-function mapBackendProduct(
-  p: BackendProduct,
-  productImages: Record<string, string>,
-): DairyProduct {
+// ─── Category default images ──────────────────────────────────────────────────
+const categoryDefaultImage = (category: string): string => {
   const categoryMap: Record<string, string> = {
     Ghee: "/assets/generated/ghee-cow.dim_600x600.jpg",
     Paneer: "/assets/generated/paneer-fresh.dim_600x600.jpg",
   };
-  // Priority: backend ExternalBlob URL > localStorage custom image > category default
-  const backendImageUrl = p.image?.getDirectURL?.();
-  const customImage = backendImageUrl || productImages[String(p.id)];
-  return {
-    id: Number(p.id),
-    name: p.name,
-    description: p.description,
-    price: p.price,
-    category: p.category as DairyProduct["category"],
-    weight: p.weight,
-    inStock: p.inStock,
-    image:
-      customImage ??
-      categoryMap[p.category] ??
-      "/assets/generated/ghee-cow.dim_600x600.jpg",
-  };
-}
+  return categoryMap[category] ?? "/assets/generated/ghee-cow.dim_600x600.jpg";
+};
 
 type Category = "All" | "Ghee" | "Paneer";
 const CATEGORIES: Category[] = ["All", "Ghee", "Paneer"];
@@ -96,42 +77,49 @@ export function StorePage() {
     setBgImageState(getBgImage() || DEFAULT_BG);
   }, []);
 
-  // Re-read social links & bg image when page is focused (in case admin updated them)
+  // ── Backend actor (needed only for order placement in CartDrawer) ─────────
+  const { actor } = useActor();
+
+  // ── Products from localStorage ─────────────────────────────────────────────
+  const [products, setProducts] = useState<DairyProduct[]>(() => {
+    const data = getLocalProducts();
+    return data.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      price: p.price,
+      category: p.category as DairyProduct["category"],
+      weight: p.weight,
+      inStock: p.inStock,
+      image: p.imageUrl || categoryDefaultImage(p.category),
+    }));
+  });
+  const [isLoadingProducts] = useState(false);
+
+  // Re-read products + social links + bg image when page is focused (e.g. after admin update)
   useEffect(() => {
-    const handleFocus = () => {
+    const onFocus = () => {
+      // Refresh products
+      const data = getLocalProducts();
+      setProducts(
+        data.map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          category: p.category as DairyProduct["category"],
+          weight: p.weight,
+          inStock: p.inStock,
+          image: p.imageUrl || categoryDefaultImage(p.category),
+        })),
+      );
+      // Refresh social links and bg image
       setSocialLinksForStore(getSocialLinks());
       setBgImageState(getBgImage() || DEFAULT_BG);
     };
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
-
-  // ── Backend products state ─────────────────────────────────────────────────
-  const { actor, isFetching: actorLoading } = useActor();
-  const [products, setProducts] = useState<DairyProduct[]>([]);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-
-  useEffect(() => {
-    // Stay in loading state while actor is still connecting
-    if (actorLoading || !actor) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await actor.getAllProducts();
-        if (!cancelled) {
-          const productImages = getProductImages();
-          setProducts(data.map((p) => mapBackendProduct(p, productImages)));
-        }
-      } catch {
-        // On error, leave products as empty array and let empty state show
-      } finally {
-        if (!cancelled) setIsLoadingProducts(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [actor, actorLoading]);
 
   // ── Cart state ─────────────────────────────────────────────────────────────
   const [cartItems, setCartItems] = useState<CartItem[]>([]);

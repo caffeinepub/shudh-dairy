@@ -1,5 +1,3 @@
-import { ExternalBlob } from "@/backend";
-import type { Product } from "@/backend.d";
 import type { Order as BackendOrder } from "@/backend.d";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +36,13 @@ import {
 } from "@/components/ui/tooltip";
 import { useActor } from "@/hooks/useActor";
 import {
+  type LocalProduct,
+  addProduct as localAddProduct,
+  deleteProduct as localDeleteProduct,
+  getAllProducts as localGetAllProducts,
+  updateProduct as localUpdateProduct,
+} from "@/utils/productStore";
+import {
   type FounderInfo,
   type SocialLink,
   type StoreTheme,
@@ -46,14 +51,12 @@ import {
   getBgImage,
   getFounderInfo,
   getLogoUrl,
-  getProductImages,
   getSocialLinks,
   getTheme,
   removeBgImage,
   setBgImage,
   setFounderInfo,
   setLogoUrl,
-  setProductImage,
   setSocialLinks,
   setTheme,
 } from "@/utils/storeCustomization";
@@ -176,43 +179,22 @@ export function AdminDashboard() {
     }
   }, [token, navigate]);
 
-  // ── Product list state ─────────────────────────────────────────────────────
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const [productImages, setProductImages] = useState<Record<string, string>>(
-    () => getProductImages(),
+  // ── Product list state (localStorage-first) ────────────────────────────────
+  const [products, setProducts] = useState<LocalProduct[]>(() =>
+    localGetAllProducts(),
   );
+  const loadingProducts = false;
+  const loadError = false;
 
-  const loadProducts = useCallback(async () => {
-    if (!actor) {
-      setLoadingProducts(false);
-      return;
-    }
-    setLoadingProducts(true);
-    setLoadError(false);
-    try {
-      const data = await actor.getAllProducts();
-      setProducts(data);
-      setProductImages(getProductImages());
-    } catch (err) {
-      console.error("Load products error:", err);
-      setProducts([]);
-      setProductImages(getProductImages());
-      setLoadError(true);
-      toast.error("Could not load products. Please try again.");
-    } finally {
-      setLoadingProducts(false);
-    }
-  }, [actor]);
-
-  useEffect(() => {
-    if (token && actor && !actorLoading) loadProducts();
-  }, [token, actor, actorLoading, loadProducts]);
+  const loadProducts = useCallback(() => {
+    setProducts(localGetAllProducts());
+  }, []);
 
   // ── Add/Edit modal ─────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<LocalProduct | null>(
+    null,
+  );
   const [formData, setFormData] = useState<ProductFormData>(emptyForm);
   const [formErrors, setFormErrors] = useState<Partial<ProductFormData>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -228,10 +210,9 @@ export function AdminDashboard() {
     setModalOpen(true);
   };
 
-  const openEditModal = (product: Product) => {
+  const openEditModal = (product: LocalProduct) => {
     setEditingProduct(product);
-    const backendUrl = product.image?.getDirectURL?.() ?? "";
-    const savedImage = backendUrl || productImages[String(product.id)] || "";
+    const savedImage = product.imageUrl || "";
     setFormData({
       name: product.name,
       description: product.description,
@@ -281,98 +262,59 @@ export function AdminDashboard() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!validateForm()) return;
-    if (!actor) {
-      toast.error(
-        "Still connecting to server. Please wait a moment and try again.",
-      );
-      return;
-    }
     setIsSaving(true);
     try {
-      // Always use empty ExternalBlob for image in backend — images are stored in localStorage only
-      // Sending large base64 data URLs to the canister exceeds ICP message size limits
-      // Use fromBytes with empty array so getBytes() returns immediately without fetching a URL
-      const imageBlob = ExternalBlob.fromBytes(new Uint8Array(0));
-
       if (editingProduct) {
-        await actor.updateProduct(
-          token,
-          editingProduct.id,
-          formData.name,
-          formData.description,
-          Number(formData.price),
-          formData.category,
-          formData.weight,
-          formData.inStock,
-          imageBlob,
-        );
-        // Save image to localStorage for display
-        if (formData.imageUrl) {
-          setProductImage(String(editingProduct.id), formData.imageUrl);
-        }
+        localUpdateProduct(editingProduct.id, {
+          name: formData.name,
+          description: formData.description,
+          price: Number(formData.price),
+          category: formData.category,
+          weight: formData.weight,
+          inStock: formData.inStock,
+          imageUrl: formData.imageUrl,
+        });
         toast.success("Product updated successfully");
-        setModalOpen(false);
-        await loadProducts();
       } else {
-        await actor.addProduct(
-          token,
-          formData.name,
-          formData.description,
-          Number(formData.price),
-          formData.category,
-          formData.weight,
-          formData.inStock,
-          imageBlob,
-        );
-        // Reload products and save image for the newly added product
-        const allProducts = await actor.getAllProducts();
-        const newProduct = allProducts
-          .slice()
-          .reverse()
-          .find(
-            (p) => p.name === formData.name && p.weight === formData.weight,
-          );
-        if (newProduct && formData.imageUrl) {
-          setProductImage(String(newProduct.id), formData.imageUrl);
-        }
-        setProducts(allProducts);
-        setProductImages(getProductImages());
+        localAddProduct({
+          name: formData.name,
+          description: formData.description,
+          price: Number(formData.price),
+          category: formData.category,
+          weight: formData.weight,
+          inStock: formData.inStock,
+          imageUrl: formData.imageUrl,
+        });
         toast.success("Product added successfully");
-        setModalOpen(false);
-        await loadProducts();
       }
+      setModalOpen(false);
+      loadProducts();
     } catch (err) {
       console.error("Product save error:", err);
-      toast.error("Operation failed. Please try again.");
+      toast.error("Failed to save product. Please try again.");
     } finally {
       setIsSaving(false);
     }
   };
 
   // ── Delete confirmation ────────────────────────────────────────────────────
-  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LocalProduct | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const confirmDelete = (product: Product) => {
+  const confirmDelete = (product: LocalProduct) => {
     setDeleteTarget(product);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteTarget) return;
-    if (!actor) {
-      toast.error(
-        "Still connecting to server. Please wait a moment and try again.",
-      );
-      return;
-    }
     setIsDeleting(true);
     try {
-      await actor.deleteProduct(token, deleteTarget.id);
+      localDeleteProduct(deleteTarget.id);
       toast.success(`"${deleteTarget.name}" deleted`);
       setDeleteTarget(null);
-      await loadProducts();
+      loadProducts();
     } catch {
       toast.error("Delete failed. Please try again.");
     } finally {
@@ -657,49 +599,12 @@ export function AdminDashboard() {
     return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
   };
 
-  // Get image URL: prefer backend ExternalBlob URL, fall back to localStorage
-  const getProductImageUrl = (product: Product): string => {
-    const backendUrl = product.image?.getDirectURL?.();
-    if (backendUrl) return backendUrl;
-    return productImages[String(product.id)] ?? "";
+  // Get image URL from localStorage product
+  const getProductImageUrl = (product: LocalProduct): string => {
+    return product.imageUrl || "";
   };
 
-  // Show a connecting overlay while actor isn't ready yet
-  const isActorConnecting = actorLoading && !actor;
-
   if (!token) return null;
-
-  if (isActorConnecting) {
-    return (
-      <div className="admin-dash-bg min-h-screen flex flex-col items-center justify-center gap-6 px-4">
-        <div className="admin-card rounded-2xl p-10 flex flex-col items-center gap-5 shadow-2xl max-w-sm w-full text-center">
-          <div className="w-14 h-14 admin-icon-ring admin-icon-glow rounded-2xl flex items-center justify-center text-3xl shadow-lg">
-            🐄
-          </div>
-          <div className="space-y-1">
-            <h2 className="admin-heading text-lg font-bold">
-              SUNRISE MILK AND AGRO PRODUCT'S
-            </h2>
-            <p className="admin-sub text-xs font-medium tracking-widest uppercase">
-              Admin Panel
-            </p>
-          </div>
-          <div
-            data-ocid="admin.dashboard.loading_state"
-            className="flex flex-col items-center gap-3 w-full"
-          >
-            <Loader2 className="admin-spinner animate-spin" size={28} />
-            <p className="admin-section-sub text-sm font-medium">
-              Connecting to server…
-            </p>
-            <p className="text-xs admin-hint">
-              This may take a few seconds on first load.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="admin-layout">
