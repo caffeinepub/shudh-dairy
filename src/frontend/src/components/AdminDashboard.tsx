@@ -223,6 +223,12 @@ export function AdminDashboard() {
   const navigate = useNavigate();
   const { actor, isFetching: actorLoading } = useActor();
 
+  // Keep a ref so async functions can read the latest actor without stale closure
+  const actorRef = useRef<typeof actor>(actor);
+  useEffect(() => {
+    actorRef.current = actor;
+  }, [actor]);
+
   // ── Auth check ─────────────────────────────────────────────────────────────
   const token = sessionStorage.getItem("adminToken") ?? "";
   const adminUser = sessionStorage.getItem("adminUser") ?? "Admin";
@@ -354,18 +360,42 @@ export function AdminDashboard() {
     return Object.keys(errors).length === 0;
   };
 
+  // Helper: wait for actor to become available (up to maxWaitMs)
+  // Uses actorRef so the loop always reads the freshest actor value
+  const waitForActor = useCallback(async (maxWaitMs = 12000) => {
+    if (actorRef.current) return actorRef.current;
+    const start = Date.now();
+    while (Date.now() - start < maxWaitMs) {
+      await new Promise((r) => setTimeout(r, 400));
+      if (actorRef.current) return actorRef.current;
+    }
+    return null;
+  }, []);
+
   const handleSave = async () => {
     if (!validateForm()) return;
-    if (!actor) {
-      toast.error("Not connected to server. Please refresh.");
+
+    // If actor isn't ready yet, wait up to 12 seconds for it
+    let currentActor = actor;
+    if (!currentActor) {
+      toast.info("Connecting to server, please wait…");
+      currentActor = await waitForActor(12000);
+    }
+
+    if (!currentActor) {
+      toast.error(
+        "Could not connect to server. Please refresh the page and try again.",
+      );
       return;
     }
+
     setIsSaving(true);
     setFormData((p) => ({ ...p, uploadProgress: 0 }));
     try {
       // Build the ExternalBlob for the image
       let imageBlob: ExternalBlob;
       if (formData.imageFile) {
+        // Compress image and build bytes blob — no fetch involved
         const compressedBytes = await compressImageToBytes(
           formData.imageFile,
           800,
@@ -376,15 +406,15 @@ export function AdminDashboard() {
         );
       } else if (editingProduct?.imageBlob) {
         // Keep existing image when editing without selecting a new one
-        imageBlob = ExternalBlob.fromURL(
-          editingProduct.imageBlob.getDirectURL(),
-        );
+        // Re-use the original blob object directly — do NOT call fromURL to avoid extra fetch
+        imageBlob = editingProduct.imageBlob;
       } else {
+        // No image selected — send empty bytes, no network fetch
         imageBlob = ExternalBlob.fromBytes(new Uint8Array(0));
       }
 
       if (editingProduct) {
-        await actor.updateProduct(
+        await currentActor.updateProduct(
           token,
           BigInt(editingProduct.id),
           formData.name,
@@ -397,7 +427,7 @@ export function AdminDashboard() {
         );
         toast.success("Product updated successfully");
       } else {
-        await actor.addProduct(
+        await currentActor.addProduct(
           token,
           formData.name,
           formData.description,
@@ -411,9 +441,18 @@ export function AdminDashboard() {
       }
       setModalOpen(false);
       await loadProducts();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Product save error:", err);
-      toast.error("Failed to save product. Please try again.");
+      // Extract a readable message from the error
+      let message = "Failed to save product. Please try again.";
+      if (err instanceof Error) {
+        message = err.message || message;
+      } else if (typeof err === "string") {
+        message = err;
+      } else if (err && typeof err === "object" && "message" in err) {
+        message = String((err as { message: unknown }).message);
+      }
+      toast.error(`Save failed: ${message}`);
     } finally {
       setIsSaving(false);
       setFormData((p) => ({ ...p, uploadProgress: 0 }));
@@ -2791,7 +2830,7 @@ export function AdminDashboard() {
                 onClick={() => {
                   void handleSave();
                 }}
-                disabled={isSaving || !actor}
+                disabled={isSaving}
                 className="admin-save-btn font-semibold"
               >
                 {isSaving ? (

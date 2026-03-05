@@ -77,58 +77,61 @@ export function StorePage() {
   }, []);
 
   // ── Backend actor ──────────────────────────────────────────────────────────
-  const { actor } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
 
   // ── Products from backend ──────────────────────────────────────────────────
   const [products, setProducts] = useState<DairyProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
-  const loadProductsFromBackend = useCallback(async () => {
-    if (!actor) {
-      setIsLoadingProducts(false);
-      return;
-    }
-    setIsLoadingProducts(true);
-    try {
-      const data = await actor.getAllProducts();
-      setProducts(
-        data.map((p) => ({
-          id: Number(p.id),
-          name: p.name,
-          description: p.description,
-          price: p.price,
-          category: p.category as DairyProduct["category"],
-          weight: p.weight,
-          inStock: p.inStock,
-          image: p.image.getDirectURL() || categoryDefaultImage(p.category),
-        })),
-      );
-    } catch {
-      // Keep empty products on error — don't show stale local data
-      setProducts([]);
-    } finally {
-      setIsLoadingProducts(false);
-    }
-  }, [actor]);
+  const loadProductsFromBackend = useCallback(
+    async (currentActor: typeof actor) => {
+      if (!currentActor) return;
+      setIsLoadingProducts(true);
+      try {
+        const data = await currentActor.getAllProducts();
+        setProducts(
+          data.map((p) => ({
+            id: Number(p.id),
+            name: p.name,
+            description: p.description,
+            price: p.price,
+            category: p.category as DairyProduct["category"],
+            weight: p.weight,
+            inStock: p.inStock,
+            image: p.image.getDirectURL() || categoryDefaultImage(p.category),
+          })),
+        );
+      } catch {
+        // Keep empty products on error — don't show stale local data
+        setProducts([]);
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (actor) {
-      void loadProductsFromBackend();
+      void loadProductsFromBackend(actor);
+    } else if (!actorFetching) {
+      // Actor is done loading but unavailable — stop spinner
+      setIsLoadingProducts(false);
     }
-  }, [actor, loadProductsFromBackend]);
+  }, [actor, actorFetching, loadProductsFromBackend]);
 
   // Re-read products + social links + bg image when page is focused (e.g. after admin update)
   useEffect(() => {
     const onFocus = () => {
       // Refresh products from backend
-      void loadProductsFromBackend();
+      if (actor) void loadProductsFromBackend(actor);
       // Refresh social links and bg image
       setSocialLinksForStore(getSocialLinks());
       setBgImageState(getBgImage() || DEFAULT_BG);
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [loadProductsFromBackend]);
+  }, [actor, loadProductsFromBackend]);
 
   // ── Cart state ─────────────────────────────────────────────────────────────
   const [cartItems, setCartItems] = useState<CartItem[]>([]);

@@ -5,9 +5,10 @@ import Time "mo:core/Time";
 import List "mo:core/List";
 import MixinStorage "blob-storage/Mixin";
 import Storage "blob-storage/Storage";
+import Map "mo:core/Map";
+import Migration "migration";
 
-
-
+(with migration = Migration.run)
 actor {
   include MixinStorage();
 
@@ -43,21 +44,18 @@ actor {
 
   let adminUsername = "admin";
   let adminPassword = "sunrise2024";
+  var nextProductId : Nat = 1;
+  var nextOrderId : Nat = 1001;
 
-  var products = List.empty<Product>();
-  var orders = List.empty<Order>();
-
-  stable var stableProducts : [Product] = [];
-  stable var stableOrders : [Order] = [];
-  stable var stableNextProductId : Nat = 1;
-  stable var stableNextOrderId : Nat = 1001;
+  var products = Map.empty<Nat, Product>();
+  var orders = Map.empty<Nat, Order>();
 
   public query ({ caller }) func getAllProducts() : async [Product] {
-    products.toArray();
+    products.values().toArray();
   };
 
   public query ({ caller }) func getAllOrders() : async [Order] {
-    orders.toArray();
+    orders.values().toArray();
   };
 
   public query ({ caller }) func adminLogin(username : Text, password : Text) : async Bool {
@@ -66,7 +64,7 @@ actor {
 
   public shared ({ caller }) func addProduct(_sessionToken : Text, name : Text, description : Text, price : Float, category : Text, weight : Text, inStock : Bool, image : Storage.ExternalBlob) : async () {
     let newProduct : Product = {
-      id = stableNextProductId;
+      id = nextProductId;
       name;
       description;
       price;
@@ -76,18 +74,13 @@ actor {
       image;
     };
 
-    products.add(newProduct);
-    stableNextProductId += 1;
-    stableProducts := products.toArray();
+    products.add(nextProductId, newProduct);
+    nextProductId += 1;
   };
 
   public shared ({ caller }) func updateProduct(_sessionToken : Text, id : Nat, name : Text, description : Text, price : Float, category : Text, weight : Text, inStock : Bool, image : Storage.ExternalBlob) : async Bool {
-    var updatedProducts = List.empty<Product>();
-    var foundProduct = false;
-
-    for (product in products.values()) {
-      if (product.id == id) {
-        foundProduct := true;
+    switch (products.get(id)) {
+      case (?_product) {
         let updatedProduct : Product = {
           id;
           name;
@@ -98,47 +91,26 @@ actor {
           inStock;
           image;
         };
-        updatedProducts.add(updatedProduct);
-      } else {
-        updatedProducts.add(product);
+        products.add(id, updatedProduct);
+        true;
       };
-    };
-
-    if (foundProduct) {
-      products.clear();
-      products.addAll(updatedProducts.values());
-      stableProducts := products.toArray();
-      true;
-    } else {
-      false;
+      case (null) { false };
     };
   };
 
   public shared ({ caller }) func deleteProduct(_sessionToken : Text, id : Nat) : async Bool {
-    var filteredProducts = List.empty<Product>();
-    var foundProduct = false;
-
-    for (product in products.values()) {
-      if (product.id != id) {
-        filteredProducts.add(product);
-      } else {
-        foundProduct := true;
+    switch (products.get(id)) {
+      case (?_) {
+        products.remove(id);
+        true;
       };
-    };
-
-    if (foundProduct) {
-      products.clear();
-      products.addAll(filteredProducts.values());
-      stableProducts := products.toArray();
-      true;
-    } else {
-      false;
+      case (null) { false };
     };
   };
 
   public shared ({ caller }) func placeOrder(customerName : Text, customerPhone : Text, customerAddress : Text, items : [OrderItem], total : Float) : async Nat {
     let newOrder : Order = {
-      id = stableNextOrderId;
+      id = nextOrderId;
       customerName;
       customerPhone;
       customerAddress;
@@ -148,45 +120,31 @@ actor {
       timestamp = Time.now();
     };
 
-    orders.add(newOrder);
-    stableNextOrderId += 1;
-    stableOrders := orders.toArray();
+    orders.add(nextOrderId, newOrder);
+    nextOrderId += 1;
     newOrder.id;
   };
 
   public query ({ caller }) func getOrdersByPhone(phone : Text) : async [Order] {
-    let ordersArray = orders.toArray();
+    let ordersArray = orders.values().toArray();
     let matchingOrders = ordersArray.filter(
       func(order) {
-        Text.equal(order.customerPhone, phone);
+        order.customerPhone == phone;
       }
     );
     matchingOrders;
   };
 
   public shared ({ caller }) func updateOrderStatus(_sessionToken : Text, orderId : Nat, status : Text) : async Bool {
-    var updatedOrders = List.empty<Order>();
-    var foundOrder = false;
-
-    for (order in orders.values()) {
-      if (order.id == orderId) {
-        foundOrder := true;
+    switch (orders.get(orderId)) {
+      case (?order) {
         let updatedOrder : Order = {
           order with status;
         };
-        updatedOrders.add(updatedOrder);
-      } else {
-        updatedOrders.add(order);
+        orders.add(orderId, updatedOrder);
+        true;
       };
-    };
-
-    if (foundOrder) {
-      orders.clear();
-      orders.addAll(updatedOrders.values());
-      stableOrders := orders.toArray();
-      true;
-    } else {
-      false;
+      case (null) { false };
     };
   };
 };
