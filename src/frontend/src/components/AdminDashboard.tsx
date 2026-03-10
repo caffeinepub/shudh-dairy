@@ -90,59 +90,6 @@ import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-// ── Image compression helper ───────────────────────────────────────────────
-async function compressImageToBytes(
-  file: File,
-  maxDim: number,
-  quality: number,
-): Promise<Uint8Array<ArrayBuffer>> {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image() as HTMLImageElement;
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      let { width, height } = img;
-      if (width > maxDim || height > maxDim) {
-        if (width > height) {
-          height = Math.round((height * maxDim) / width);
-          width = maxDim;
-        } else {
-          width = Math.round((width * maxDim) / height);
-          height = maxDim;
-        }
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("No canvas context"));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error("Canvas toBlob failed"));
-            return;
-          }
-          blob
-            .arrayBuffer()
-            .then((buf) => resolve(new Uint8Array(buf as ArrayBuffer)))
-            .catch(reject);
-        },
-        "image/jpeg",
-        quality,
-      );
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Image load failed"));
-    };
-    img.src = url;
-  });
-}
-
 // ── Backend product display type ───────────────────────────────────────────
 type BackendProduct = {
   id: number;
@@ -152,8 +99,7 @@ type BackendProduct = {
   category: string;
   weight: string;
   inStock: boolean;
-  imageUrl: string; // from ExternalBlob.getDirectURL()
-  imageBlob?: ExternalBlob; // original blob for re-use when editing without new image
+  imageUrl: string; // resolved from localStorage or ExternalBlob.getDirectURL()
 };
 
 type ProductFormData = {
@@ -260,17 +206,22 @@ export function AdminDashboard() {
     try {
       const data = await actor.getAllProducts();
       setProducts(
-        data.map((p) => ({
-          id: Number(p.id),
-          name: p.name,
-          description: p.description,
-          price: p.price,
-          category: p.category,
-          weight: p.weight,
-          inStock: p.inStock,
-          imageUrl: p.image.getDirectURL(),
-          imageBlob: p.image,
-        })),
+        data.map((p) => {
+          const id = Number(p.id);
+          // Check localStorage first — images are stored there to avoid ICP message size limits
+          const localImg = localStorage.getItem(`product_img_${id}`);
+          const imageUrl = localImg || p.image.getDirectURL() || "";
+          return {
+            id,
+            name: p.name,
+            description: p.description,
+            price: p.price,
+            category: p.category,
+            weight: p.weight,
+            inStock: p.inStock,
+            imageUrl,
+          };
+        }),
       );
     } catch {
       setLoadError(true);
@@ -321,7 +272,12 @@ export function AdminDashboard() {
       uploadProgress: 0,
     });
     setFormErrors({});
-    setImagePreview(product.imageUrl || "");
+    // Show existing image from localStorage or the product imageUrl
+    const existingImg =
+      localStorage.getItem(`product_img_${product.id}`) ||
+      product.imageUrl ||
+      "";
+    setImagePreview(existingImg);
     setModalOpen(true);
   };
 
@@ -390,30 +346,14 @@ export function AdminDashboard() {
     }
 
     setIsSaving(true);
-    setFormData((p) => ({ ...p, uploadProgress: 0 }));
     try {
-      // Build the ExternalBlob for the image
-      let imageBlob: ExternalBlob;
-      if (formData.imageFile) {
-        // Compress image and build bytes blob — no fetch involved
-        const compressedBytes = await compressImageToBytes(
-          formData.imageFile,
-          800,
-          0.75,
-        );
-        imageBlob = ExternalBlob.fromBytes(compressedBytes).withUploadProgress(
-          (pct) => setFormData((p) => ({ ...p, uploadProgress: pct })),
-        );
-      } else if (editingProduct?.imageBlob) {
-        // Keep existing image when editing without selecting a new one
-        // Re-use the original blob object directly — do NOT call fromURL to avoid extra fetch
-        imageBlob = editingProduct.imageBlob;
-      } else {
-        // No image selected — send empty bytes, no network fetch
-        imageBlob = ExternalBlob.fromBytes(new Uint8Array(0));
-      }
+      // ALWAYS send an empty blob — never send image bytes to ICP backend.
+      // ICP inter-canister messages have a 2MB limit; images exceed this.
+      // Images are stored in localStorage instead and resolved client-side.
+      const emptyBlob = ExternalBlob.fromURL("");
 
       if (editingProduct) {
+        // ── UPDATE existing product ──────────────────────────────────
         await currentActor.updateProduct(
           token,
           BigInt(editingProduct.id),
@@ -423,10 +363,32 @@ export function AdminDashboard() {
           formData.category,
           formData.weight,
           formData.inStock,
-          imageBlob,
+          emptyBlob,
         );
+
+        // Save new image to localStorage if one was selected;
+        // otherwise keep the existing localStorage entry untouched.
+        if (formData.imageFile) {
+          const dataUrl = await fileToDataUrl(formData.imageFile);
+          localStorage.setItem(`product_img_${editingProduct.id}`, dataUrl);
+        }
+
         toast.success("Product updated successfully");
+        setModalOpen(false);
+        await loadProducts();
       } else {
+        // ── ADD new product ──────────────────────────────────────────
+        // If an image was selected, store it under a temp key first.
+        // After loadProducts(), find the new product by name+weight and
+        // move the image to the correct product_img_<id> key.
+        let pendingImageDataUrl: string | null = null;
+        if (formData.imageFile) {
+          pendingImageDataUrl = await fileToDataUrl(formData.imageFile);
+          // Store with temp key so we can associate it after we get the ID
+          const tempKey = `product_img_pending_${formData.name}_${formData.weight}`;
+          localStorage.setItem(tempKey, pendingImageDataUrl);
+        }
+
         await currentActor.addProduct(
           token,
           formData.name,
@@ -435,12 +397,41 @@ export function AdminDashboard() {
           formData.category,
           formData.weight,
           formData.inStock,
-          imageBlob,
+          emptyBlob,
         );
+
         toast.success("Product added successfully");
+        setModalOpen(false);
+
+        // Reload products to get the new product with its backend-assigned ID
+        await loadProducts();
+
+        // Associate the pending image with the newly created product
+        if (pendingImageDataUrl) {
+          const tempKey = `product_img_pending_${formData.name}_${formData.weight}`;
+          // Access current products via state setter to get the latest value
+          setProducts((currentProducts) => {
+            const newProduct = currentProducts.find(
+              (p) => p.name === formData.name && p.weight === formData.weight,
+            );
+            if (newProduct) {
+              localStorage.setItem(
+                `product_img_${newProduct.id}`,
+                pendingImageDataUrl as string,
+              );
+              localStorage.removeItem(tempKey);
+              // Return updated list with image
+              return currentProducts.map((p) =>
+                p.id === newProduct.id
+                  ? { ...p, imageUrl: pendingImageDataUrl as string }
+                  : p,
+              );
+            }
+            localStorage.removeItem(tempKey);
+            return currentProducts;
+          });
+        }
       }
-      setModalOpen(false);
-      await loadProducts();
     } catch (err: unknown) {
       console.error("Product save error:", err);
       // Extract a readable message from the error
@@ -472,6 +463,8 @@ export function AdminDashboard() {
     setIsDeleting(true);
     try {
       await actor.deleteProduct(token, BigInt(deleteTarget.id));
+      // Also clean up the localStorage image for this product
+      localStorage.removeItem(`product_img_${deleteTarget.id}`);
       toast.success(`"${deleteTarget.name}" deleted`);
       setDeleteTarget(null);
       await loadProducts();
@@ -602,15 +595,27 @@ export function AdminDashboard() {
     }
   };
 
-  const handleSaveFounderInfo = () => {
+  const handleSaveFounderInfo = async () => {
     setIsSavingFounder(true);
     try {
       const infoToSave: FounderInfo = {
         ...founderInfo,
         photo: founderPhotoPreview,
       };
+      // Save to localStorage as local cache
       setFounderInfo(infoToSave);
       setFounderInfoState(infoToSave);
+      // Save to backend so all visitors see the updated founder info
+      if (actor) {
+        await actor.updateFounderInfo(
+          "admin",
+          infoToSave.name,
+          infoToSave.title,
+          infoToSave.bio,
+          infoToSave.foundedYear,
+          founderPhotoPreview || "",
+        );
+      }
       toast.success("Founder info saved!");
     } catch {
       toast.error("Failed to save founder info.");
@@ -2776,20 +2781,17 @@ export function AdminDashboard() {
                       <Upload size={14} />
                       {imagePreview ? "Change Photo" : "Upload Photo"}
                     </Button>
-                    {isSaving &&
-                      formData.uploadProgress > 0 &&
-                      formData.uploadProgress < 100 && (
-                        <div className="space-y-1">
-                          <Progress
-                            value={formData.uploadProgress}
-                            className="h-1.5"
-                          />
-                          <p className="text-xs admin-section-sub text-center">
-                            Uploading photo…{" "}
-                            {Math.round(formData.uploadProgress)}%
-                          </p>
-                        </div>
-                      )}
+                    {isSaving && (
+                      <div className="space-y-1">
+                        <Progress
+                          value={undefined}
+                          className="h-1.5 animate-pulse"
+                        />
+                        <p className="text-xs admin-section-sub text-center">
+                          Saving product…
+                        </p>
+                      </div>
+                    )}
                     {imagePreview && (
                       <Button
                         type="button"

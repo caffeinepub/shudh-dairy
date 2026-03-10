@@ -142,6 +142,8 @@ export interface backendInterface {
     getOrdersByPhone(phone: string): Promise<Array<Order>>;
     placeOrder(customerName: string, customerPhone: string, customerAddress: string, items: Array<OrderItem>, total: number): Promise<bigint>;
     updateOrderStatus(_sessionToken: string, orderId: bigint, status: string): Promise<boolean>;
+    getFounderInfo(): Promise<{ name: string; title: string; bio: string; foundedYear: string; photoUrl: string }>;
+    updateFounderInfo(_sessionToken: string, name: string, title: string, bio: string, foundedYear: string, photoUrl: string): Promise<boolean>;
     updateProduct(_sessionToken: string, id: bigint, name: string, description: string, price: number, category: string, weight: string, inStock: boolean, image: ExternalBlob): Promise<boolean>;
 }
 import type { ExternalBlob as _ExternalBlob, Product as _Product, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
@@ -354,6 +356,28 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateProduct(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, await to_candid_ExternalBlob_n8(this._uploadFile, this._downloadFile, arg8));
+            return result;
+        }
+    }
+    async getFounderInfo(): Promise<{ name: string; title: string; bio: string; foundedYear: string; photoUrl: string }> {
+        try {
+            const result = await this.actor.getFounderInfo();
+            return result as { name: string; title: string; bio: string; foundedYear: string; photoUrl: string };
+        } catch {
+            return { name: "", title: "", bio: "", foundedYear: "", photoUrl: "" };
+        }
+    }
+    async updateFounderInfo(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateFounderInfo(arg0, arg1, arg2, arg3, arg4, arg5);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateFounderInfo(arg0, arg1, arg2, arg3, arg4, arg5);
             return result;
         }
     }

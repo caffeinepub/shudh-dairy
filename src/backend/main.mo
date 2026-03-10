@@ -6,9 +6,9 @@ import List "mo:core/List";
 import MixinStorage "blob-storage/Mixin";
 import Storage "blob-storage/Storage";
 import Map "mo:core/Map";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   include MixinStorage();
 
@@ -42,6 +42,14 @@ actor {
     timestamp : Int;
   };
 
+  type FounderInfo = {
+    name : Text;
+    title : Text;
+    bio : Text;
+    foundedYear : Text;
+    photoUrl : Text; // blob URL or empty
+  };
+
   let adminUsername = "admin";
   let adminPassword = "sunrise2024";
   var nextProductId : Nat = 1;
@@ -49,6 +57,14 @@ actor {
 
   var products = Map.empty<Nat, Product>();
   var orders = Map.empty<Nat, Order>();
+
+  var founderInfo : FounderInfo = {
+    name = "Founder";
+    title = "Founder & Managing Director";
+    bio = "Started SUNRISE MILK AND AGRO PRODUCT'S with a simple vision — to bring pure, farm-fresh dairy products directly to families in Udaipur. Every product is made with care, tradition, and love for quality.";
+    foundedYear = "2018";
+    photoUrl = "";
+  };
 
   public query ({ caller }) func getAllProducts() : async [Product] {
     products.values().toArray();
@@ -146,5 +162,20 @@ actor {
       };
       case (null) { false };
     };
+  };
+
+  public query ({ caller }) func getFounderInfo() : async FounderInfo {
+    founderInfo;
+  };
+
+  public shared ({ caller }) func updateFounderInfo(_sessionToken : Text, name : Text, title : Text, bio : Text, foundedYear : Text, photoUrl : Text) : async Bool {
+    founderInfo := {
+      name;
+      title;
+      bio;
+      foundedYear;
+      photoUrl;
+    };
+    true;
   };
 };

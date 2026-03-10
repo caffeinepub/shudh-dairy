@@ -41,14 +41,23 @@ export interface Product {
     image: ExternalBlob;
     price: number;
 }
+export interface BackendFounderInfo {
+    name: string;
+    title: string;
+    bio: string;
+    foundedYear: string;
+    photoUrl: string;
+}
 export interface backendInterface {
     addProduct(_sessionToken: string, name: string, description: string, price: number, category: string, weight: string, inStock: boolean, image: ExternalBlob): Promise<void>;
     adminLogin(username: string, password: string): Promise<boolean>;
     deleteProduct(_sessionToken: string, id: bigint): Promise<boolean>;
     getAllOrders(): Promise<Array<Order>>;
     getAllProducts(): Promise<Array<Product>>;
+    getFounderInfo(): Promise<BackendFounderInfo>;
     getOrdersByPhone(phone: string): Promise<Array<Order>>;
     placeOrder(customerName: string, customerPhone: string, customerAddress: string, items: Array<OrderItem>, total: number): Promise<bigint>;
+    updateFounderInfo(_sessionToken: string, name: string, title: string, bio: string, foundedYear: string, photoUrl: string): Promise<boolean>;
     updateOrderStatus(_sessionToken: string, orderId: bigint, status: string): Promise<boolean>;
     updateProduct(_sessionToken: string, id: bigint, name: string, description: string, price: number, category: string, weight: string, inStock: boolean, image: ExternalBlob): Promise<boolean>;
 }

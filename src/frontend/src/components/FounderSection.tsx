@@ -1,13 +1,43 @@
+import { useActor } from "@/hooks/useActor";
 import { getFounderInfo } from "@/utils/storeCustomization";
 import { Quote } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 
 export function FounderSection() {
-  const founder = getFounderInfo();
+  const localFounder = getFounderInfo();
+  const { actor, isFetching } = useActor();
 
-  // Resolve photo: custom base64 → default generated photo
-  const photoSrc =
-    founder.photo || "/assets/generated/founder-photo.dim_400x400.jpg";
+  const [name, setName] = useState(localFounder.name);
+  const [title, setTitle] = useState(localFounder.title);
+  const [bio, setBio] = useState(localFounder.bio);
+  const [foundedYear, setFoundedYear] = useState(localFounder.foundedYear);
+  const [photoSrc, setPhotoSrc] = useState(
+    localFounder.photo || "/assets/generated/founder-photo.dim_400x400.jpg",
+  );
+
+  useEffect(() => {
+    if (!actor || isFetching) return;
+    actor
+      .getFounderInfo()
+      .then((info) => {
+        if (info.name) setName(info.name);
+        if (info.title) setTitle(info.title);
+        if (info.bio) setBio(info.bio);
+        if (info.foundedYear) setFoundedYear(info.foundedYear);
+        // Prefer backend photoUrl, then local base64, then default
+        if (info.photoUrl) {
+          setPhotoSrc(info.photoUrl);
+        } else if (localFounder.photo) {
+          setPhotoSrc(localFounder.photo);
+        } else {
+          setPhotoSrc("/assets/generated/founder-photo.dim_400x400.jpg");
+        }
+      })
+      .catch(() => {
+        // silently fall back to localStorage values already set
+      });
+  }, [actor, isFetching, localFounder.photo]);
 
   return (
     <section
@@ -57,7 +87,7 @@ export function FounderSection() {
                 <img
                   data-ocid="founder.photo"
                   src={photoSrc}
-                  alt={`${founder.name} — ${founder.title}`}
+                  alt={`${name} — ${title}`}
                   className="w-full h-full object-cover object-center"
                   loading="lazy"
                 />
@@ -77,7 +107,7 @@ export function FounderSection() {
                   Since
                 </p>
                 <p className="founder-year-value text-3xl font-bold leading-none font-display">
-                  {founder.foundedYear}
+                  {foundedYear}
                 </p>
               </motion.div>
             </div>
@@ -98,7 +128,7 @@ export function FounderSection() {
 
             {/* Pull quote */}
             <blockquote className="founder-pullquote text-xl sm:text-2xl font-display font-bold leading-snug">
-              "Pure dairy. Trusted families. Udaipur's own."
+              "Pure dairy. Trusted families. Udaipur&#39;s own."
             </blockquote>
 
             {/* Bio text */}
@@ -106,7 +136,7 @@ export function FounderSection() {
               data-ocid="founder.bio"
               className="founder-bio text-base leading-relaxed"
             >
-              {founder.bio}
+              {bio}
             </p>
 
             {/* Founder name + title */}
@@ -116,13 +146,13 @@ export function FounderSection() {
                 data-ocid="founder.name"
                 className="founder-name font-display text-2xl font-bold leading-tight"
               >
-                {founder.name}
+                {name}
               </p>
               <p className="founder-title text-sm font-semibold mt-1 tracking-wide">
-                {founder.title}
+                {title}
               </p>
               <p className="founder-company text-xs mt-1.5 tracking-wider uppercase">
-                SUNRISE MILK AND AGRO PRODUCT'S
+                SUNRISE MILK AND AGRO PRODUCT&#39;S
               </p>
             </div>
 

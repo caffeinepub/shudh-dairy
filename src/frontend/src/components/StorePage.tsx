@@ -90,16 +90,25 @@ export function StorePage() {
       try {
         const data = await currentActor.getAllProducts();
         setProducts(
-          data.map((p) => ({
-            id: Number(p.id),
-            name: p.name,
-            description: p.description,
-            price: p.price,
-            category: p.category as DairyProduct["category"],
-            weight: p.weight,
-            inStock: p.inStock,
-            image: p.image.getDirectURL() || categoryDefaultImage(p.category),
-          })),
+          data.map((p) => {
+            const id = Number(p.id);
+            // Check localStorage for image — admin stores images there to avoid ICP message size limits
+            const localImg = localStorage.getItem(`product_img_${id}`);
+            const image =
+              localImg ||
+              p.image.getDirectURL() ||
+              categoryDefaultImage(p.category);
+            return {
+              id,
+              name: p.name,
+              description: p.description,
+              price: p.price,
+              category: p.category as DairyProduct["category"],
+              weight: p.weight,
+              inStock: p.inStock,
+              image,
+            };
+          }),
         );
       } catch {
         // Keep empty products on error — don't show stale local data
