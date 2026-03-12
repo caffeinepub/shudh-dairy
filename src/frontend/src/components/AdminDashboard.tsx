@@ -48,12 +48,15 @@ import {
   getLogoUrl,
   getSocialLinks,
   getTheme,
+  getUpiQr,
   removeBgImage,
+  removeUpiQr,
   setBgImage,
   setFounderInfo,
   setLogoUrl,
   setSocialLinks,
   setTheme,
+  setUpiQr,
 } from "@/utils/storeCustomization";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -66,6 +69,7 @@ import {
   Loader2,
   Lock,
   LogOut,
+  MessageSquare,
   Package,
   PackagePlus,
   Palette,
@@ -85,7 +89,8 @@ type AdminSection =
   | "settings"
   | "founder"
   | "social"
-  | "security";
+  | "security"
+  | "reviews";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -163,6 +168,197 @@ function mapBackendOrder(o: BackendOrder): DisplayOrder {
       | "Delivered",
     timestamp: Number(o.timestamp) / 1_000_000,
   };
+}
+
+// ── Reviews Admin Section ─────────────────────────────────────────────────
+import type { Review as BackendReview } from "@/backend.d";
+
+type UIReview = {
+  id: bigint;
+  name: string;
+  rating: number;
+  comment: string;
+  date: string;
+  helpful: number;
+};
+
+function toUIReview(r: BackendReview): UIReview {
+  const ms = Number(r.timestamp) / 1_000_000;
+  return {
+    id: r.id,
+    name: r.customerName,
+    rating: Number(r.rating),
+    comment: r.comment,
+    date: new Date(ms).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }),
+    helpful: Number(r.helpful),
+  };
+}
+
+function StarDisplay({ value }: { value: number }) {
+  return (
+    <span className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <span
+          key={s}
+          style={{
+            color: s <= value ? "oklch(0.78 0.17 72)" : "oklch(0.80 0.02 72)",
+          }}
+        >
+          ★
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function ReviewsAdminSection({ token }: { token: string }) {
+  const { actor, isFetching: actorLoading } = useActor();
+  const [reviews, setReviews] = useState<UIReview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<bigint | null>(null);
+
+  const loadReviews = useCallback(async () => {
+    if (!actor) return;
+    setLoading(true);
+    try {
+      const raw = await actor.getAllReviews();
+      const sorted = [...raw]
+        .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
+        .map(toUIReview);
+      setReviews(sorted);
+    } catch (err) {
+      console.error("Failed to load reviews", err);
+      toast.error("Failed to load reviews.");
+    } finally {
+      setLoading(false);
+    }
+  }, [actor]);
+
+  useEffect(() => {
+    if (!actorLoading && actor) void loadReviews();
+  }, [actorLoading, actor, loadReviews]);
+
+  const handleDelete = async (id: bigint) => {
+    setDeletingId(id);
+    try {
+      const ok = await actor?.deleteReview(token, id);
+      if (ok) {
+        toast.success("Review deleted.");
+        await loadReviews();
+      } else {
+        toast.error("Could not delete review.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete review.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay: 0.18 }}
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-8 h-8 rounded-lg admin-header-icon flex items-center justify-center shrink-0">
+          <MessageSquare size={16} />
+        </div>
+        <div>
+          <h2 className="admin-section-title text-2xl font-bold">
+            Customer Reviews
+          </h2>
+          <p className="admin-sub text-sm">View and manage customer reviews</p>
+        </div>
+      </div>
+
+      {loading || actorLoading ? (
+        <div
+          data-ocid="admin.reviews.loading_state"
+          className="flex items-center justify-center py-16 gap-3 text-muted-foreground"
+        >
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading reviews...</span>
+        </div>
+      ) : reviews.length === 0 ? (
+        <div
+          data-ocid="admin.reviews.empty_state"
+          className="text-center py-16 text-muted-foreground"
+        >
+          <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="font-semibold">No reviews yet</p>
+          <p className="text-sm mt-1">Customer reviews will appear here.</p>
+        </div>
+      ) : (
+        <div
+          data-ocid="admin.reviews.table"
+          className="rounded-xl border border-border overflow-hidden"
+        >
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>Rating</TableHead>
+                <TableHead>Review</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-center">Helpful</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reviews.map((review, i) => (
+                <TableRow
+                  key={review.id.toString()}
+                  data-ocid={`admin.reviews.row.${i + 1}`}
+                >
+                  <TableCell className="font-semibold text-sm whitespace-nowrap">
+                    {review.name}
+                  </TableCell>
+                  <TableCell>
+                    <StarDisplay value={review.rating} />
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-xs">
+                    <p className="line-clamp-2">{review.comment}</p>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {review.date}
+                  </TableCell>
+                  <TableCell className="text-center text-sm">
+                    {review.helpful}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      data-ocid={`admin.reviews.delete_button.${i + 1}`}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        void handleDelete(review.id);
+                      }}
+                      disabled={deletingId === review.id}
+                      className="admin-delete-btn gap-1.5 text-xs h-8"
+                    >
+                      {deletingId === review.id ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={13} />
+                      )}
+                      Delete
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </motion.div>
+  );
 }
 
 export function AdminDashboard() {
@@ -500,6 +696,7 @@ export function AdminDashboard() {
     { id: "founder", label: "Founder Info", Icon: User },
     { id: "social", label: "Social Media", Icon: Share2 },
     { id: "security", label: "Security", Icon: Lock },
+    { id: "reviews", label: "Reviews", Icon: MessageSquare },
   ];
 
   // ── Store Settings ─────────────────────────────────────────────────────────
@@ -512,7 +709,18 @@ export function AdminDashboard() {
   const [theme, setThemeState] = useState<StoreTheme>(() => getTheme());
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [upiQrPreview, setUpiQrPreview] = useState<string>(() => getUpiQr());
+  useEffect(() => {
+    if (!actor) return;
+    (actor as any)
+      .getUpiQrImage()
+      .then((url: string) => {
+        if (url) setUpiQrPreview(url);
+      })
+      .catch(() => {});
+  }, [actor]);
   const bgImageInputRef = useRef<HTMLInputElement>(null);
+  const upiQrInputRef = useRef<HTMLInputElement>(null);
 
   const handleBgImageFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -527,6 +735,19 @@ export function AdminDashboard() {
       toast.error("Failed to load image. Please try again.");
     } finally {
       setIsUploadingBgImage(false);
+    }
+  };
+
+  const handleUpiQrFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setUpiQrPreview(dataUrl);
+    } catch {
+      toast.error("Failed to load QR code image.");
     }
   };
 
@@ -555,6 +776,17 @@ export function AdminDashboard() {
         setBgImage(bgImagePreview);
       } else if (!bgImagePreview || bgImagePreview === DEFAULT_BG) {
         removeBgImage();
+      }
+      // Save UPI QR code
+      if (upiQrPreview) {
+        setUpiQr(upiQrPreview);
+        try {
+          await (actor as any)?.setUpiQrImage(token, upiQrPreview);
+        } catch {
+          toast.error("Failed to save QR code to server.");
+        }
+      } else {
+        removeUpiQr();
       }
       // Save and apply theme
       setTheme(theme);
@@ -1535,6 +1767,70 @@ export function AdminDashboard() {
                 {/* Divider */}
                 <div className="border-t admin-settings-divider" />
 
+                {/* ── UPI Payment QR Code ───────────────────────── */}
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-base">📱</span>
+                    <h3 className="admin-section-title text-base font-semibold">
+                      UPI Payment QR Code
+                    </h3>
+                  </div>
+                  <p className="admin-section-sub text-sm leading-relaxed mb-4">
+                    Customers will see this QR code to pay after placing an
+                    order. Upload your UPI QR code image (from Google Pay,
+                    PhonePe, Paytm, etc.).
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-start gap-5">
+                    {upiQrPreview && (
+                      <div className="w-32 h-32 rounded-xl border-2 border-dashed admin-settings-border flex items-center justify-center shrink-0 overflow-hidden bg-white p-1">
+                        <img
+                          src={upiQrPreview}
+                          alt="UPI QR Code preview"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <input
+                          ref={upiQrInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          id="upi-qr-file-input"
+                          onChange={handleUpiQrFileChange}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          data-ocid="admin.settings.upi_qr_upload_button"
+                          onClick={() => upiQrInputRef.current?.click()}
+                          className="admin-retry-btn gap-2"
+                        >
+                          <Upload size={14} />
+                          {upiQrPreview ? "Change QR Code" : "Upload QR Code"}
+                        </Button>
+                        {upiQrPreview && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            data-ocid="admin.settings.upi_qr_delete_button"
+                            onClick={() => setUpiQrPreview("")}
+                            className="admin-delete-btn gap-2 text-xs"
+                          >
+                            Remove QR Code
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t admin-settings-divider" />
+
                 {/* ── Theme colours ────────────────────────────────── */}
                 <div>
                   <div className="flex items-center gap-2 mb-4">
@@ -2325,6 +2621,10 @@ export function AdminDashboard() {
           )}
 
           {/* ── SOCIAL MEDIA SECTION ─────────────────────────────────────────── */}
+
+          {/* ── REVIEWS SECTION ─────────────────────────────────────────────── */}
+          {activeSection === "reviews" && <ReviewsAdminSection token={token} />}
+
           {activeSection === "social" && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}

@@ -47,6 +47,21 @@ export const Product = IDL.Record({
   'image' : ExternalBlob,
   'price' : IDL.Float64,
 });
+export const Review = IDL.Record({
+  'id' : IDL.Nat,
+  'customerName' : IDL.Text,
+  'comment' : IDL.Text,
+  'timestamp' : IDL.Int,
+  'rating' : IDL.Nat,
+  'helpful' : IDL.Nat,
+});
+export const FounderInfo = IDL.Record({
+  'bio' : IDL.Text,
+  'title' : IDL.Text,
+  'foundedYear' : IDL.Text,
+  'name' : IDL.Text,
+  'photoUrl' : IDL.Text,
+});
 
 export const idlService = IDL.Service({
   '_caffeineStorageBlobIsLive' : IDL.Func(
@@ -89,14 +104,29 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
+  'addReview' : IDL.Func([IDL.Text, IDL.Nat, IDL.Text], [IDL.Nat], []),
   'adminLogin' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], ['query']),
+  'changeAdminPassword' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Bool],
+      [],
+    ),
   'deleteProduct' : IDL.Func([IDL.Text, IDL.Nat], [IDL.Bool], []),
+  'deleteReview' : IDL.Func([IDL.Text, IDL.Nat], [IDL.Bool], []),
   'getAllOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
   'getAllProducts' : IDL.Func([], [IDL.Vec(Product)], ['query']),
+  'getAllReviews' : IDL.Func([], [IDL.Vec(Review)], ['query']),
+  'getFounderInfo' : IDL.Func([], [FounderInfo], ['query']),
   'getOrdersByPhone' : IDL.Func([IDL.Text], [IDL.Vec(Order)], ['query']),
+  'markReviewHelpful' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'placeOrder' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Text, IDL.Vec(OrderItem), IDL.Float64],
       [IDL.Nat],
+      [],
+    ),
+  'updateFounderInfo' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Bool],
       [],
     ),
   'updateOrderStatus' : IDL.Func([IDL.Text, IDL.Nat, IDL.Text], [IDL.Bool], []),
@@ -159,6 +189,21 @@ export const idlFactory = ({ IDL }) => {
     'image' : ExternalBlob,
     'price' : IDL.Float64,
   });
+  const Review = IDL.Record({
+    'id' : IDL.Nat,
+    'customerName' : IDL.Text,
+    'comment' : IDL.Text,
+    'timestamp' : IDL.Int,
+    'rating' : IDL.Nat,
+    'helpful' : IDL.Nat,
+  });
+  const FounderInfo = IDL.Record({
+    'bio' : IDL.Text,
+    'title' : IDL.Text,
+    'foundedYear' : IDL.Text,
+    'name' : IDL.Text,
+    'photoUrl' : IDL.Text,
+  });
   
   return IDL.Service({
     '_caffeineStorageBlobIsLive' : IDL.Func(
@@ -201,14 +246,29 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'addReview' : IDL.Func([IDL.Text, IDL.Nat, IDL.Text], [IDL.Nat], []),
     'adminLogin' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], ['query']),
+    'changeAdminPassword' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Bool],
+        [],
+      ),
     'deleteProduct' : IDL.Func([IDL.Text, IDL.Nat], [IDL.Bool], []),
+    'deleteReview' : IDL.Func([IDL.Text, IDL.Nat], [IDL.Bool], []),
     'getAllOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
     'getAllProducts' : IDL.Func([], [IDL.Vec(Product)], ['query']),
+    'getAllReviews' : IDL.Func([], [IDL.Vec(Review)], ['query']),
+    'getFounderInfo' : IDL.Func([], [FounderInfo], ['query']),
     'getOrdersByPhone' : IDL.Func([IDL.Text], [IDL.Vec(Order)], ['query']),
+    'markReviewHelpful' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'placeOrder' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text, IDL.Vec(OrderItem), IDL.Float64],
         [IDL.Nat],
+        [],
+      ),
+    'updateFounderInfo' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Bool],
         [],
       ),
     'updateOrderStatus' : IDL.Func(

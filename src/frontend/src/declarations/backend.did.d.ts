@@ -11,6 +11,13 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export type ExternalBlob = Uint8Array;
+export interface FounderInfo {
+  'bio' : string,
+  'title' : string,
+  'foundedYear' : string,
+  'name' : string,
+  'photoUrl' : string,
+}
 export interface Order {
   'id' : bigint,
   'customerName' : string,
@@ -37,6 +44,14 @@ export interface Product {
   'category' : string,
   'image' : ExternalBlob,
   'price' : number,
+}
+export interface Review {
+  'id' : bigint,
+  'customerName' : string,
+  'comment' : string,
+  'timestamp' : bigint,
+  'rating' : bigint,
+  'helpful' : bigint,
 }
 export interface _CaffeineStorageCreateCertificateResult {
   'method' : string,
@@ -69,14 +84,24 @@ export interface _SERVICE {
     [string, string, string, number, string, string, boolean, ExternalBlob],
     undefined
   >,
+  'addReview' : ActorMethod<[string, bigint, string], bigint>,
   'adminLogin' : ActorMethod<[string, string], boolean>,
+  'changeAdminPassword' : ActorMethod<[string, string, string], boolean>,
   'deleteProduct' : ActorMethod<[string, bigint], boolean>,
+  'deleteReview' : ActorMethod<[string, bigint], boolean>,
   'getAllOrders' : ActorMethod<[], Array<Order>>,
   'getAllProducts' : ActorMethod<[], Array<Product>>,
+  'getAllReviews' : ActorMethod<[], Array<Review>>,
+  'getFounderInfo' : ActorMethod<[], FounderInfo>,
   'getOrdersByPhone' : ActorMethod<[string], Array<Order>>,
+  'markReviewHelpful' : ActorMethod<[bigint], boolean>,
   'placeOrder' : ActorMethod<
     [string, string, string, Array<OrderItem>, number],
     bigint
+  >,
+  'updateFounderInfo' : ActorMethod<
+    [string, string, string, string, string, string],
+    boolean
   >,
   'updateOrderStatus' : ActorMethod<[string, bigint, string], boolean>,
   'updateProduct' : ActorMethod<

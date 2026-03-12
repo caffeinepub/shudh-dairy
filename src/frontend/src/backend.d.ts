@@ -21,6 +21,13 @@ export interface OrderItem {
     quantity: bigint;
     price: number;
 }
+export interface FounderInfo {
+    bio: string;
+    title: string;
+    foundedYear: string;
+    name: string;
+    photoUrl: string;
+}
 export interface Order {
     id: bigint;
     customerName: string;
@@ -30,6 +37,14 @@ export interface Order {
     customerAddress: string;
     timestamp: bigint;
     items: Array<OrderItem>;
+}
+export interface Review {
+    id: bigint;
+    customerName: string;
+    comment: string;
+    timestamp: bigint;
+    rating: bigint;
+    helpful: bigint;
 }
 export interface Product {
     id: bigint;
@@ -41,22 +56,22 @@ export interface Product {
     image: ExternalBlob;
     price: number;
 }
-export interface BackendFounderInfo {
-    name: string;
-    title: string;
-    bio: string;
-    foundedYear: string;
-    photoUrl: string;
-}
 export interface backendInterface {
     addProduct(_sessionToken: string, name: string, description: string, price: number, category: string, weight: string, inStock: boolean, image: ExternalBlob): Promise<void>;
+    addReview(customerName: string, rating: bigint, comment: string): Promise<bigint>;
     adminLogin(username: string, password: string): Promise<boolean>;
+    changeAdminPassword(_sessionToken: string, oldPassword: string, newPassword: string): Promise<boolean>;
     deleteProduct(_sessionToken: string, id: bigint): Promise<boolean>;
+    deleteReview(_sessionToken: string, id: bigint): Promise<boolean>;
     getAllOrders(): Promise<Array<Order>>;
     getAllProducts(): Promise<Array<Product>>;
-    getFounderInfo(): Promise<BackendFounderInfo>;
+    getAllReviews(): Promise<Array<Review>>;
+    getFounderInfo(): Promise<FounderInfo>;
     getOrdersByPhone(phone: string): Promise<Array<Order>>;
+    getUpiQrImage(): Promise<string>;
+    markReviewHelpful(id: bigint): Promise<boolean>;
     placeOrder(customerName: string, customerPhone: string, customerAddress: string, items: Array<OrderItem>, total: number): Promise<bigint>;
+    setUpiQrImage(_sessionToken: string, imageDataUrl: string): Promise<boolean>;
     updateFounderInfo(_sessionToken: string, name: string, title: string, bio: string, foundedYear: string, photoUrl: string): Promise<boolean>;
     updateOrderStatus(_sessionToken: string, orderId: bigint, status: string): Promise<boolean>;
     updateProduct(_sessionToken: string, id: bigint, name: string, description: string, price: number, category: string, weight: string, inStock: boolean, image: ExternalBlob): Promise<boolean>;

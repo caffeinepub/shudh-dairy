@@ -289,3 +289,22 @@ export function setBgImage(url: string): void {
 export function removeBgImage(): void {
   localStorage.removeItem(BG_IMAGE_KEY);
 }
+
+// ── UPI QR Code ────────────────────────────────────────────────────────────────
+
+const UPI_QR_KEY = "sunrise_upi_qr";
+
+/** Returns the stored UPI QR code image (base64 data URL), or empty string. */
+export function getUpiQr(): string {
+  return localStorage.getItem(UPI_QR_KEY) ?? "";
+}
+
+/** Saves a UPI QR code image (base64 data URL). */
+export function setUpiQr(url: string): void {
+  localStorage.setItem(UPI_QR_KEY, url);
+}
+
+/** Removes the stored UPI QR code image. */
+export function removeUpiQr(): void {
+  localStorage.removeItem(UPI_QR_KEY);
+}

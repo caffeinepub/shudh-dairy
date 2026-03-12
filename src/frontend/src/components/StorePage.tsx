@@ -33,6 +33,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CartDrawer, type CartItem, type DairyProduct } from "./CartDrawer";
+import { CustomerReviews } from "./CustomerReviews";
 import { FounderSection } from "./FounderSection";
 import { ProductCard } from "./ProductCard";
 
@@ -96,7 +97,9 @@ export function StorePage() {
             const localImg = localStorage.getItem(`product_img_${id}`);
             const image =
               localImg ||
-              p.image.getDirectURL() ||
+              (p.image && typeof (p.image as any).getDirectURL === "function"
+                ? (p.image as any).getDirectURL()
+                : "") ||
               categoryDefaultImage(p.category);
             return {
               id,
@@ -596,6 +599,9 @@ export function StorePage() {
 
       {/* ── FOUNDER SECTION ────────────────────────────────────────────────── */}
       <FounderSection />
+
+      {/* ── CUSTOMER REVIEWS ──────────────────────────────────────────────── */}
+      <CustomerReviews />
 
       {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
       <footer className="footer-dark mt-8">

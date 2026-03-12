@@ -1,4 +1,3 @@
-import type { backendInterface } from "@/backend.d";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { saveOrder } from "@/utils/orderStorage";
+import { getUpiQr } from "@/utils/storeCustomization";
 import {
   CheckCircle2,
   Copy,
@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export type CartItem = {
   productId: number;
@@ -49,7 +49,7 @@ interface CartDrawerProps {
   onUpdateQuantity: (productId: number, delta: number) => void;
   onRemove: (productId: number) => void;
   onOrderPlaced?: (orderId: number) => void;
-  actor?: backendInterface | null;
+  actor?: any;
 }
 
 type CheckoutStep = "cart" | "form" | "confirmation";
@@ -71,6 +71,7 @@ type ConfirmationStepProps = {
   total: number;
   formatINR: (amount: number) => string;
   onContinueShopping: () => void;
+  upiQrUrl?: string;
 };
 
 function ConfirmationStep({
@@ -80,6 +81,7 @@ function ConfirmationStep({
   total,
   formatINR,
   onContinueShopping,
+  upiQrUrl,
 }: ConfirmationStepProps) {
   const [copied, setCopied] = useState(false);
 
@@ -185,6 +187,38 @@ function ConfirmationStep({
         </div>
       </div>
 
+      {upiQrUrl && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.3 }}
+          className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-5 text-center"
+        >
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <span className="text-2xl">📱</span>
+            <h3 className="font-display text-lg font-bold text-amber-900">
+              Pay via UPI
+            </h3>
+          </div>
+          <div className="flex justify-center mb-3">
+            <img
+              src={upiQrUrl}
+              alt="UPI QR Code"
+              className="max-w-[200px] w-full bg-white border border-amber-200 rounded-xl p-2"
+            />
+          </div>
+          <p className="text-lg font-bold text-amber-800 mb-1">
+            Total: {formatINR(total)}
+          </p>
+          <p className="text-xs text-amber-700 mb-2">
+            Scan with Google Pay, PhonePe, Paytm or any UPI app
+          </p>
+          <p className="text-xs text-amber-600 italic">
+            Your order will be confirmed once payment is received
+          </p>
+        </motion.div>
+      )}
+
       <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
         We will call you on{" "}
         <strong className="text-foreground">{form.phone}</strong> to confirm
@@ -252,6 +286,18 @@ export function CartDrawer({
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [placedOrderId, setPlacedOrderId] = useState<number | null>(null);
+  const [upiQrUrl, setUpiQrUrl] = useState<string>(() => getUpiQr());
+  useEffect(() => {
+    if (!actor) return;
+    actor
+      .getUpiQrImage()
+      .then((url: string) => {
+        if (url) setUpiQrUrl(url);
+      })
+      .catch(() => {
+        // fall back to localStorage value already set
+      });
+  }, [actor]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const openCheckout = () => {
@@ -761,6 +807,7 @@ export function CartDrawer({
               total={total}
               formatINR={formatINR}
               onContinueShopping={handleContinueShopping}
+              upiQrUrl={upiQrUrl}
             />
           )}
         </DialogContent>

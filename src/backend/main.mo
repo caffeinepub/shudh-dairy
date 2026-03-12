@@ -1,13 +1,10 @@
-import Array "mo:core/Array";
+import Map "mo:core/Map";
 import Nat "mo:core/Nat";
+import Array "mo:core/Array";
 import Text "mo:core/Text";
 import Time "mo:core/Time";
-import List "mo:core/List";
 import MixinStorage "blob-storage/Mixin";
 import Storage "blob-storage/Storage";
-import Map "mo:core/Map";
-
-
 
 actor {
   include MixinStorage();
@@ -47,18 +44,30 @@ actor {
     title : Text;
     bio : Text;
     foundedYear : Text;
-    photoUrl : Text; // blob URL or empty
+    photoUrl : Text;
+  };
+
+  type Review = {
+    id : Nat;
+    customerName : Text;
+    rating : Nat;
+    comment : Text;
+    timestamp : Int;
+    helpful : Nat;
   };
 
   let adminUsername = "admin";
-  let adminPassword = "sunrise2024";
-  var nextProductId : Nat = 1;
-  var nextOrderId : Nat = 1001;
+  stable var adminPassword : Text = "sunrise2024";
+  stable var nextProductId : Nat = 1;
+  stable var nextOrderId : Nat = 1001;
+  stable var nextReviewId : Nat = 1;
+  stable var upiQrImage : Text = "";
 
-  var products = Map.empty<Nat, Product>();
-  var orders = Map.empty<Nat, Order>();
+  stable var products = Map.empty<Nat, Product>();
+  stable var orders = Map.empty<Nat, Order>();
+  stable var reviews = Map.empty<Nat, Review>();
 
-  var founderInfo : FounderInfo = {
+  stable var founderInfo : FounderInfo = {
     name = "Founder";
     title = "Founder & Managing Director";
     bio = "Started SUNRISE MILK AND AGRO PRODUCT'S with a simple vision — to bring pure, farm-fresh dairy products directly to families in Udaipur. Every product is made with care, tradition, and love for quality.";
@@ -76,6 +85,15 @@ actor {
 
   public query ({ caller }) func adminLogin(username : Text, password : Text) : async Bool {
     Text.equal(username, adminUsername) and Text.equal(password, adminPassword);
+  };
+
+  public shared ({ caller }) func changeAdminPassword(_sessionToken : Text, oldPassword : Text, newPassword : Text) : async Bool {
+    if (Text.equal(oldPassword, adminPassword)) {
+      adminPassword := newPassword;
+      true;
+    } else {
+      false;
+    };
   };
 
   public shared ({ caller }) func addProduct(_sessionToken : Text, name : Text, description : Text, price : Float, category : Text, weight : Text, inStock : Bool, image : Storage.ExternalBlob) : async () {
@@ -176,6 +194,59 @@ actor {
       foundedYear;
       photoUrl;
     };
+    true;
+  };
+
+  public shared ({ caller }) func addReview(customerName : Text, rating : Nat, comment : Text) : async Nat {
+    let newReview : Review = {
+      id = nextReviewId;
+      customerName;
+      rating;
+      comment;
+      timestamp = Time.now();
+      helpful = 0;
+    };
+
+    reviews.add(nextReviewId, newReview);
+    nextReviewId += 1;
+    newReview.id;
+  };
+
+  public query ({ caller }) func getAllReviews() : async [Review] {
+    reviews.values().toArray();
+  };
+
+  public shared ({ caller }) func deleteReview(_sessionToken : Text, id : Nat) : async Bool {
+    switch (reviews.get(id)) {
+      case (?_) {
+        reviews.remove(id);
+        true;
+      };
+      case (null) { false };
+    };
+  };
+
+  public shared ({ caller }) func markReviewHelpful(id : Nat) : async Bool {
+    switch (reviews.get(id)) {
+      case (?review) {
+        let updatedReview : Review = {
+          review with helpful = review.helpful + 1;
+        };
+        reviews.add(id, updatedReview);
+        true;
+      };
+      case (null) { false };
+    };
+  };
+
+  // ── UPI QR Code ────────────────────────────────────────────────────────────
+
+  public query ({ caller }) func getUpiQrImage() : async Text {
+    upiQrImage;
+  };
+
+  public shared ({ caller }) func setUpiQrImage(_sessionToken : Text, imageDataUrl : Text) : async Bool {
+    upiQrImage := imageDataUrl;
     true;
   };
 };
