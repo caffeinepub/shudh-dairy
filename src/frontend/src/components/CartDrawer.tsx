@@ -18,12 +18,13 @@ import {
   MessageCircle,
   Minus,
   Plus,
+  QrCode,
   ShoppingBag,
   Truck,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export type CartItem = {
   productId: number;
@@ -52,7 +53,8 @@ interface CartDrawerProps {
   actor?: any;
 }
 
-type CheckoutStep = "cart" | "form" | "confirmation";
+type CheckoutStep = "cart" | "form" | "payment" | "confirmation";
+type PaymentMethod = "cod" | "prepaid";
 
 type CheckoutForm = {
   name: string;
@@ -72,6 +74,7 @@ type ConfirmationStepProps = {
   formatINR: (amount: number) => string;
   onContinueShopping: () => void;
   upiQrUrl?: string;
+  paymentMethod: PaymentMethod;
 };
 
 function ConfirmationStep({
@@ -81,7 +84,7 @@ function ConfirmationStep({
   total,
   formatINR,
   onContinueShopping,
-  upiQrUrl,
+  paymentMethod,
 }: ConfirmationStepProps) {
   const [copied, setCopied] = useState(false);
 
@@ -107,9 +110,24 @@ function ConfirmationStep({
       <h2 className="font-display text-2xl font-bold text-foreground mb-1">
         Order Placed!
       </h2>
-      <p className="text-muted-foreground text-sm mb-4">
+      <p className="text-muted-foreground text-sm mb-3">
         Thank you, {form.name}!
       </p>
+
+      {/* Payment method badge */}
+      <div className="flex justify-center mb-4">
+        {paymentMethod === "prepaid" ? (
+          <span className="inline-flex items-center gap-1.5 bg-green-100 border border-green-300 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full">
+            <CheckCircle2 size={13} />
+            Payment Confirmed
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 bg-amber-100 border border-amber-300 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-full">
+            <Truck size={13} />
+            Cash on Delivery
+          </span>
+        )}
+      </div>
 
       {/* Prominent Tracking ID */}
       {placedOrderId && (
@@ -187,38 +205,6 @@ function ConfirmationStep({
         </div>
       </div>
 
-      {upiQrUrl && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.3 }}
-          className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-5 text-center"
-        >
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <span className="text-2xl">📱</span>
-            <h3 className="font-display text-lg font-bold text-amber-900">
-              Pay via UPI
-            </h3>
-          </div>
-          <div className="flex justify-center mb-3">
-            <img
-              src={upiQrUrl}
-              alt="UPI QR Code"
-              className="max-w-[200px] w-full bg-white border border-amber-200 rounded-xl p-2"
-            />
-          </div>
-          <p className="text-lg font-bold text-amber-800 mb-1">
-            Total: {formatINR(total)}
-          </p>
-          <p className="text-xs text-amber-700 mb-2">
-            Scan with Google Pay, PhonePe, Paytm or any UPI app
-          </p>
-          <p className="text-xs text-amber-600 italic">
-            Your order will be confirmed once payment is received
-          </p>
-        </motion.div>
-      )}
-
       <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
         We will call you on{" "}
         <strong className="text-foreground">{form.phone}</strong> to confirm
@@ -279,6 +265,7 @@ export function CartDrawer({
   // ── Checkout state ─────────────────────────────────────────────────────────
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>("form");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [form, setForm] = useState<CheckoutForm>({
     name: "",
     phone: "",
@@ -287,11 +274,12 @@ export function CartDrawer({
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [placedOrderId, setPlacedOrderId] = useState<number | null>(null);
   const [upiQrUrl] = useState<string>(() => getUpiQr());
-
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
 
   const openCheckout = () => {
     setCheckoutStep("form");
+    setPaymentMethod("cod");
     setForm({ name: "", phone: "", address: "" });
     setFormErrors({});
     setPlacedOrderId(null);
@@ -335,7 +323,6 @@ export function CartDrawer({
             total,
           );
           displayOrderId = Number(backendOrderId);
-          // Also save locally so customer can track from same browser
           saveOrder({
             customerName: form.name.trim(),
             customerPhone: form.phone.trim(),
@@ -350,7 +337,6 @@ export function CartDrawer({
             total,
           });
         } catch {
-          // Fall back to local storage only if backend call fails
           const localOrder = saveOrder({
             customerName: form.name.trim(),
             customerPhone: form.phone.trim(),
@@ -367,7 +353,6 @@ export function CartDrawer({
           displayOrderId = localOrder.id;
         }
       } else {
-        // No actor available — use local storage as fallback
         const localOrder = saveOrder({
           customerName: form.name.trim(),
           customerPhone: form.phone.trim(),
@@ -385,10 +370,29 @@ export function CartDrawer({
       }
 
       setPlacedOrderId(displayOrderId);
-      setCheckoutStep("confirmation");
       onOrderPlaced?.(displayOrderId);
+
+      if (paymentMethod === "prepaid") {
+        setCheckoutStep("payment");
+      } else {
+        setCheckoutStep("confirmation");
+      }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePaymentConfirmed = async () => {
+    setIsConfirmingPayment(true);
+    try {
+      if (actor && placedOrderId) {
+        await actor.updateOrderStatus("", BigInt(placedOrderId), "Confirmed");
+      }
+    } catch {
+      // ignore errors — still proceed to confirmation
+    } finally {
+      setIsConfirmingPayment(false);
+      setCheckoutStep("confirmation");
     }
   };
 
@@ -619,14 +623,14 @@ export function CartDrawer({
       <Dialog
         open={checkoutOpen}
         onOpenChange={(open) => {
-          if (!isSubmitting) setCheckoutOpen(open);
+          if (!isSubmitting && !isConfirmingPayment) setCheckoutOpen(open);
         }}
       >
         <DialogContent
           data-ocid="cart.checkout.modal"
           className="sm:max-w-md max-h-[90vh] overflow-y-auto"
         >
-          {checkoutStep === "form" ? (
+          {checkoutStep === "form" && (
             <>
               <DialogHeader>
                 <DialogTitle className="font-display text-xl font-bold text-foreground">
@@ -767,6 +771,106 @@ export function CartDrawer({
                     </p>
                   )}
                 </div>
+
+                {/* Payment Method Selection */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Payment Method *
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Cash on Delivery */}
+                    <button
+                      type="button"
+                      data-ocid="cart.checkout.cod_toggle"
+                      onClick={() => setPaymentMethod("cod")}
+                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
+                        paymentMethod === "cod"
+                          ? "border-primary bg-primary/8 text-primary"
+                          : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                          paymentMethod === "cod"
+                            ? "bg-primary/15"
+                            : "bg-accent"
+                        }`}
+                      >
+                        <Truck
+                          size={18}
+                          className={
+                            paymentMethod === "cod"
+                              ? "text-primary"
+                              : "text-muted-foreground"
+                          }
+                        />
+                      </div>
+                      <div className="text-center">
+                        <p
+                          className={`text-xs font-bold leading-tight ${
+                            paymentMethod === "cod"
+                              ? "text-primary"
+                              : "text-foreground"
+                          }`}
+                        >
+                          Cash on Delivery
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+                          Pay when delivered
+                        </p>
+                      </div>
+                      {paymentMethod === "cod" && (
+                        <CheckCircle2 size={14} className="text-primary" />
+                      )}
+                    </button>
+
+                    {/* Prepaid / UPI */}
+                    <button
+                      type="button"
+                      data-ocid="cart.checkout.prepaid_toggle"
+                      onClick={() => setPaymentMethod("prepaid")}
+                      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
+                        paymentMethod === "prepaid"
+                          ? "border-primary bg-primary/8 text-primary"
+                          : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                          paymentMethod === "prepaid"
+                            ? "bg-primary/15"
+                            : "bg-accent"
+                        }`}
+                      >
+                        <QrCode
+                          size={18}
+                          className={
+                            paymentMethod === "prepaid"
+                              ? "text-primary"
+                              : "text-muted-foreground"
+                          }
+                        />
+                      </div>
+                      <div className="text-center">
+                        <p
+                          className={`text-xs font-bold leading-tight ${
+                            paymentMethod === "prepaid"
+                              ? "text-primary"
+                              : "text-foreground"
+                          }`}
+                        >
+                          Prepaid / UPI
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+                          Pay now via UPI
+                        </p>
+                      </div>
+                      {paymentMethod === "prepaid" && (
+                        <CheckCircle2 size={14} className="text-primary" />
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-1">
@@ -788,7 +892,105 @@ export function CartDrawer({
                 </Button>
               </div>
             </>
-          ) : (
+          )}
+
+          {checkoutStep === "payment" && (
+            /* ── UPI PAYMENT STEP ──────────────────────────────────────────── */
+            <div data-ocid="cart.checkout.panel" className="py-2">
+              <DialogHeader className="mb-4">
+                <DialogTitle className="font-display text-xl font-bold text-foreground">
+                  Complete Your Payment
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Scan the QR code below using any UPI app to pay.
+                </p>
+              </DialogHeader>
+
+              {/* Order info strip */}
+              <div className="flex items-center justify-between bg-accent/40 rounded-xl px-4 py-3 mb-5">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                    Order
+                  </p>
+                  <p className="font-display font-bold text-foreground text-sm">
+                    #{placedOrderId}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                    Amount
+                  </p>
+                  <p className="font-display font-bold text-primary text-lg">
+                    {formatINR(total)}
+                  </p>
+                </div>
+              </div>
+
+              {/* QR Code area */}
+              {upiQrUrl ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex flex-col items-center bg-white border-2 border-amber-200 rounded-2xl p-5 mb-5"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-2xl">📱</span>
+                    <p className="font-semibold text-amber-900 text-sm">
+                      Scan & Pay via UPI
+                    </p>
+                  </div>
+                  <img
+                    src={upiQrUrl}
+                    alt="UPI QR Code"
+                    className="max-w-[200px] w-full rounded-xl border border-amber-100"
+                  />
+                  <p className="text-xs text-amber-700 mt-3 text-center">
+                    Google Pay · PhonePe · Paytm · Any UPI App
+                  </p>
+                </motion.div>
+              ) : (
+                <div className="flex flex-col items-center justify-center bg-accent/30 border-2 border-dashed border-border rounded-2xl p-8 mb-5 text-center">
+                  <QrCode size={40} className="text-muted-foreground mb-3" />
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    Please scan our UPI QR code to pay
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Our team will share the QR code via call to confirm payment
+                  </p>
+                </div>
+              )}
+
+              {/* Primary CTA */}
+              <Button
+                data-ocid="cart.checkout.confirm_button"
+                className="w-full h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-base mb-3 shadow-md"
+                onClick={handlePaymentConfirmed}
+                disabled={isConfirmingPayment}
+              >
+                {isConfirmingPayment ? (
+                  "Confirming…"
+                ) : (
+                  <>
+                    <CheckCircle2 size={18} className="mr-2" />I Have Paid ✓
+                  </>
+                )}
+              </Button>
+
+              {/* Secondary fallback */}
+              <button
+                type="button"
+                data-ocid="cart.checkout.cancel_button"
+                onClick={() => setCheckoutStep("confirmation")}
+                disabled={isConfirmingPayment}
+                className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded-lg"
+              >
+                Pay Later (Cash on Delivery)
+              </button>
+            </div>
+          )}
+
+          {checkoutStep === "confirmation" && (
             /* ── ORDER CONFIRMATION ──────────────────────────────────────── */
             <ConfirmationStep
               form={form}
@@ -798,6 +1000,7 @@ export function CartDrawer({
               formatINR={formatINR}
               onContinueShopping={handleContinueShopping}
               upiQrUrl={upiQrUrl}
+              paymentMethod={paymentMethod}
             />
           )}
         </DialogContent>

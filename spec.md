@@ -1,38 +1,26 @@
-# SUNRISE MILK AND AGRO PRODUCT'S
+# Shree Nath Dairy
 
 ## Current State
-
-A full e-commerce dairy store with:
-- Public StorePage showing products loaded from backend canister via `actor.getAllProducts()`
-- Admin panel at `/admin/dashboard` for managing products, orders, settings, social media, founder info, and security
-- Products stored permanently in backend using stable Motoko variables
-- Product images stored via blob-storage component (`ExternalBlob`)
-- The `addProduct` and `updateProduct` backend calls accept `ExternalBlob` as the image field
-- In the admin's `handleSave`, images are uploaded with `ExternalBlob.fromBytes(bytes).withUploadProgress(...)`
-- `StorePage` loads products when `actor` is available and `!actorLoading`
-- `getDirectURL()` is called on the product's ExternalBlob to get the image URL
+Checkout flow has a single payment path: order placed → UPI QR shown on confirmation screen.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Nothing new
+- Payment method selection step in checkout: Cash on Delivery vs Prepaid/UPI
+- New `payment` step in checkout flow for prepaid orders — shows UPI QR and "I Have Paid" button
+- When customer clicks "I Have Paid", order status is auto-updated to "Confirmed" via `updateOrderStatus` backend call
+- Confirmation screen shows payment method badge (green for Prepaid, amber for COD)
 
 ### Modify
-- **StorePage**: Fix products not appearing -- the `useEffect` dependency on both `actor` and `actorLoading` creates a timing gap where products never load; fix by triggering load whenever `actor` changes (is non-null), regardless of `actorLoading` state. Also ensure a fallback category image is shown if `getDirectURL()` returns empty string.
-- **AdminDashboard**: Fix product photo upload -- images are currently uploaded as raw bytes which can exceed ICP message limits for large photos. Fix by resizing/compressing images to max 800x800 before converting to bytes, and using `ExternalBlob.fromBytes(compressedBytes)`. Also ensure the Save button is never disabled due to actor connection state when actor is already available.
-- **AdminDashboard**: Fix the `Save` button being disabled when `actorLoading` is true but `actor` is already present -- the button should only be disabled when `actor` is actually null, not when `actorLoading` is true.
+- `CartDrawer.tsx`: add payment method state, selection UI, payment step, and auto-confirm logic
+- COD orders continue to "Pending" status; prepaid orders are auto-confirmed
 
 ### Remove
-- Nothing
+- UPI QR from the confirmation screen (it now appears in the dedicated payment step)
 
 ## Implementation Plan
-
-1. In `StorePage.tsx`:
-   - Change the `useEffect` to trigger `loadProductsFromBackend` when `actor` becomes non-null (remove dependency on `actorLoading`)
-   - In the `loadProductsFromBackend` function, use `p.image.getDirectURL() || categoryDefaultImage(p.category)` as the image (already done but verify)
-   - Add a retry mechanism: if `actor` is null after 2 seconds, retry loading
-
-2. In `AdminDashboard.tsx`:
-   - In `handleSave`, add image compression before upload: use Canvas API to resize image to max 800x800px and compress to JPEG 0.75 quality before converting to `Uint8Array`
-   - Change the Save button's `disabled` condition from `isSaving || actorLoading || !actor` to `isSaving || !actor`
-   - Ensure error messages are clear when image upload fails
+1. Add `paymentMethod` state and `"payment"` step to CartDrawer
+2. Add payment method selection cards (COD / Prepaid) in checkout form
+3. Add payment step UI with QR code and "I Have Paid" button
+4. Call `actor.updateOrderStatus("", BigInt(orderId), "Confirmed")` on payment confirmation
+5. Update ConfirmationStep to show payment method badge
