@@ -1,0 +1,996 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Playfair Display — display serif for headings */
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/assets/fonts/PlayfairDisplay-VF.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* General Sans — clean humanist sans for body */
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans-Variable.woff2") format("woff2");
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Bricolage Grotesque — modern admin panel heading font */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque-VF.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* ── FIX 1: Premium Indian dairy palette ──────────────────────────────
+       Direction: warm parchment base + deep saffron-gold primary +
+       terracotta accent. Think "heritage Rajasthani brand", not "web app."
+       Contrast verified AA+ on all text/bg combinations.
+    ─────────────────────────────────────────────────────────────────────── */
+
+    /* Warm parchment — aged paper, not clinical white */
+    --background: 0.965 0.022 88;
+    --foreground: 0.18 0.04 45;
+
+    /* Ivory card — slightly lighter than bg, with warmth */
+    --card: 0.985 0.012 86;
+    --card-foreground: 0.18 0.04 45;
+
+    --popover: 0.985 0.012 86;
+    --popover-foreground: 0.18 0.04 45;
+
+    /* Deep saffron-gold primary — rich, saturated, unmistakably Indian */
+    --primary: 0.68 0.19 62;
+    --primary-foreground: 0.99 0.005 90;
+
+    /* Warm sand secondary */
+    --secondary: 0.92 0.028 82;
+    --secondary-foreground: 0.32 0.04 55;
+
+    /* Muted warm grey */
+    --muted: 0.93 0.018 80;
+    --muted-foreground: 0.48 0.03 60;
+
+    /* Saffron-cream accent — for trust badge backgrounds */
+    --accent: 0.94 0.055 78;
+    --accent-foreground: 0.38 0.12 55;
+
+    /* Terracotta destructive — earthy not garish */
+    --destructive: 0.55 0.22 30;
+    --destructive-foreground: 0.99 0.005 90;
+
+    /* Warm border — visible but not harsh */
+    --border: 0.86 0.025 76;
+    --input: 0.86 0.025 76;
+    --ring: 0.68 0.19 62;
+
+    /* ── Category badge tokens ──────────────────────────────────────────── */
+    --badge-ghee-bg: 0.94 0.08 72;
+    --badge-ghee-fg: 0.38 0.14 52;
+    --badge-paneer-bg: 0.93 0.06 145;
+    --badge-paneer-fg: 0.32 0.1 145;
+    --badge-combo-bg: 0.92 0.09 48;
+    --badge-combo-fg: 0.38 0.14 42;
+
+    /* ── Trust bar token ────────────────────────────────────────────────── */
+    --trust-bar: 0.36 0.08 48;
+    --trust-bar-fg: 0.97 0.014 82;
+
+    --chart-1: 0.68 0.19 62;
+    --chart-2: 0.62 0.16 145;
+    --chart-3: 0.55 0.14 30;
+    --chart-4: 0.76 0.14 88;
+    --chart-5: 0.8 0.18 75;
+
+    --sidebar: 0.965 0.022 88;
+    --sidebar-foreground: 0.18 0.04 45;
+    --sidebar-primary: 0.68 0.19 62;
+    --sidebar-primary-foreground: 0.99 0.005 90;
+    --sidebar-accent: 0.93 0.025 80;
+    --sidebar-accent-foreground: 0.32 0.04 55;
+    --sidebar-border: 0.86 0.025 76;
+    --sidebar-ring: 0.68 0.19 62;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "General Sans", sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer base {
+  /* ── Admin panel design tokens ────────────────────────────────────────────
+     Intentionally dark/professional — distinct from the warm store palette.
+     Direction: slate-indigo admin system, clean & authoritative.
+  ─────────────────────────────────────────────────────────────────────────── */
+  .admin-login-bg {
+    background: oklch(0.14 0.025 260);
+    position: relative;
+    overflow: hidden;
+  }
+  .admin-login-grid-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+        oklch(0.3 0.04 260 / 0.15) 1px,
+        transparent 1px
+      ), linear-gradient(90deg, oklch(0.3 0.04 260 / 0.15) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .admin-login-bg::after {
+    content: "";
+    position: absolute;
+    top: -30%;
+    left: -10%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(
+      circle,
+      oklch(0.52 0.18 255 / 0.12) 0%,
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+  /* Second glow: warm amber at bottom-right */
+  .admin-login-glow2 {
+    position: absolute;
+    bottom: -20%;
+    right: -10%;
+    width: 50%;
+    height: 50%;
+    background: radial-gradient(
+      circle,
+      oklch(0.52 0.14 55 / 0.08) 0%,
+      transparent 70%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+  .admin-card {
+    background: oklch(0.18 0.025 260);
+    border: 1px solid oklch(0.28 0.04 260);
+    box-shadow: 0 32px 64px -12px oklch(0.08 0.02 260 / 0.6), 0 0 0 1px
+      oklch(0.3 0.04 260);
+  }
+  /* Admin icon with animated spin ring */
+  .admin-icon-spin-ring {
+    position: relative;
+  }
+  .admin-icon-spin-ring::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 1rem;
+    background: conic-gradient(
+      oklch(0.52 0.18 255) 0deg,
+      oklch(0.38 0.14 255 / 0.6) 90deg,
+      oklch(0.52 0.14 55 / 0.4) 180deg,
+      oklch(0.52 0.18 255 / 0.3) 270deg,
+      oklch(0.52 0.18 255) 360deg
+    );
+    animation: spin-ring 8s linear infinite;
+    z-index: -1;
+  }
+  @keyframes spin-ring {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .admin-card-header {
+    background: oklch(0.2 0.03 260);
+    border-bottom: 1px solid oklch(0.28 0.04 260);
+  }
+  .admin-icon-ring {
+    background: oklch(0.25 0.08 255);
+    border: 1px solid oklch(0.38 0.1 255);
+  }
+  .admin-icon-glow {
+    box-shadow: 0 0 0 4px oklch(0.38 0.14 255 / 0.2), 0 0 18px 4px
+      oklch(0.52 0.18 255 / 0.18);
+  }
+  .admin-heading {
+    color: oklch(0.96 0.01 260);
+  }
+  .admin-sub {
+    color: oklch(0.55 0.08 255);
+    letter-spacing: 0.12em;
+  }
+  .admin-label {
+    color: oklch(0.62 0.06 255);
+  }
+  .admin-input-icon {
+    color: oklch(0.5 0.07 255);
+  }
+  .admin-input {
+    background: oklch(0.22 0.03 260) !important;
+    border-color: oklch(0.3 0.04 260) !important;
+    color: oklch(0.94 0.01 260) !important;
+  }
+  .admin-input::placeholder {
+    color: oklch(0.44 0.04 260) !important;
+  }
+  .admin-input:focus-visible {
+    border-color: oklch(0.58 0.18 255) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px oklch(0.58 0.18 255 / 0.25) !important;
+  }
+  .admin-error {
+    background: oklch(0.22 0.08 30);
+    border: 1px solid oklch(0.35 0.12 30);
+    color: oklch(0.8 0.1 30);
+  }
+  .admin-submit-btn {
+    background: oklch(0.52 0.18 255) !important;
+    color: oklch(0.99 0.005 260) !important;
+    border: none !important;
+    transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s
+      ease !important;
+  }
+  .admin-submit-btn:hover:not(:disabled) {
+    background: oklch(0.58 0.2 255) !important;
+  }
+  .admin-submit-btn:active:not(:disabled) {
+    transform: scale(0.97) !important;
+  }
+  .admin-submit-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 3px oklch(0.58 0.18 255 / 0.4) !important;
+  }
+  .admin-hint-divider {
+    border-color: oklch(0.28 0.04 260);
+  }
+  .admin-hint {
+    color: oklch(0.42 0.05 255);
+  }
+  .admin-hint-code {
+    background: oklch(0.24 0.04 260);
+    color: oklch(0.72 0.12 255);
+  }
+  .admin-back-link {
+    color: oklch(0.52 0.08 255);
+  }
+
+  /* Dashboard tokens */
+  .admin-dash-bg {
+    background: oklch(0.96 0.008 258);
+  }
+  .admin-dash-header {
+    background: linear-gradient(
+      135deg,
+      oklch(0.14 0.028 265) 0%,
+      oklch(0.18 0.035 255) 100%
+    );
+    border-bottom: 1px solid oklch(0.28 0.06 258);
+    box-shadow: 0 1px 12px oklch(0.52 0.18 255 / 0.12);
+  }
+  .admin-header-icon {
+    background: oklch(0.52 0.18 255);
+    color: white;
+  }
+  .admin-dash-title {
+    color: oklch(0.97 0.008 260);
+  }
+  .admin-dash-subtitle {
+    color: oklch(0.55 0.08 255);
+  }
+  .admin-user-badge {
+    background: oklch(0.24 0.04 258);
+    color: oklch(0.7 0.1 255);
+  }
+  .admin-user-dot {
+    background: oklch(0.68 0.18 145);
+  }
+  .admin-logout-btn {
+    color: oklch(0.6 0.08 255) !important;
+  }
+  .admin-logout-btn:hover {
+    color: oklch(0.8 0.05 260) !important;
+    background: oklch(0.22 0.03 258) !important;
+  }
+  .admin-section-title {
+    color: oklch(0.18 0.04 258);
+  }
+  .admin-section-sub {
+    color: oklch(0.48 0.05 258);
+  }
+  .admin-refresh-btn {
+    color: oklch(0.48 0.06 255) !important;
+  }
+  .admin-add-btn {
+    background: oklch(0.52 0.18 255) !important;
+    color: white !important;
+    transition: background 0.15s ease, transform 0.1s ease !important;
+  }
+  .admin-add-btn:hover {
+    background: oklch(0.58 0.2 255) !important;
+  }
+  .admin-add-btn:active {
+    transform: scale(0.96) !important;
+  }
+  .admin-add-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 3px oklch(0.52 0.18 255 / 0.35) !important;
+  }
+  .admin-table-card {
+    background: white;
+    border-color: oklch(0.88 0.02 258);
+    box-shadow: 0 2px 12px -3px oklch(0.52 0.1 258 / 0.08);
+  }
+  .admin-table-head-row {
+    background: linear-gradient(
+      to right,
+      oklch(0.955 0.015 258),
+      oklch(0.96 0.012 258)
+    );
+    border-bottom: 1px solid oklch(0.88 0.02 258);
+  }
+  .admin-th {
+    color: oklch(0.4 0.05 258);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .admin-table-row:nth-child(even) {
+    background: oklch(0.978 0.006 258 / 0.5);
+  }
+  .admin-table-row:hover {
+    background: oklch(0.968 0.012 258);
+    box-shadow: inset 3px 0 0 oklch(0.52 0.18 255 / 0.4);
+  }
+  .admin-cell-name {
+    color: oklch(0.2 0.04 258);
+  }
+  .admin-cell-desc {
+    color: oklch(0.52 0.04 258);
+  }
+  .admin-cell-meta {
+    color: oklch(0.44 0.04 258);
+  }
+  .admin-cell-price {
+    color: oklch(0.18 0.04 258);
+  }
+  .admin-badge-instock {
+    background: oklch(0.93 0.06 145);
+    color: oklch(0.32 0.1 145);
+  }
+  .admin-badge-oos {
+    background: oklch(0.93 0.04 30);
+    color: oklch(0.42 0.12 30);
+  }
+  .admin-dot-instock {
+    background: oklch(0.56 0.18 145);
+  }
+  .admin-dot-oos {
+    background: oklch(0.56 0.16 30);
+  }
+  .admin-edit-btn {
+    color: oklch(0.48 0.1 255) !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+  }
+  .admin-edit-btn:hover {
+    background: oklch(0.92 0.04 255) !important;
+    color: oklch(0.38 0.14 255) !important;
+  }
+  .admin-edit-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 2px oklch(0.52 0.18 255 / 0.35) !important;
+  }
+  .admin-edit-btn:active {
+    transform: scale(0.94) !important;
+  }
+  .admin-delete-btn {
+    color: oklch(0.55 0.1 30) !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+  }
+  .admin-delete-btn:hover {
+    background: oklch(0.94 0.04 30) !important;
+    color: oklch(0.42 0.16 30) !important;
+  }
+  .admin-delete-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 2px oklch(0.52 0.16 30 / 0.35) !important;
+  }
+  .admin-delete-btn:active {
+    transform: scale(0.94) !important;
+  }
+  .admin-spinner {
+    color: oklch(0.52 0.18 255);
+  }
+  .admin-error-text {
+    color: oklch(0.42 0.12 30);
+  }
+  .admin-retry-btn {
+    color: oklch(0.48 0.1 255) !important;
+    border-color: oklch(0.78 0.06 255) !important;
+  }
+  .admin-empty-icon {
+    background: oklch(0.93 0.04 258);
+  }
+
+  /* Modal tokens */
+  .admin-modal {
+    background: white !important;
+    border-color: oklch(0.88 0.02 258) !important;
+  }
+  .admin-modal-title {
+    color: oklch(0.16 0.04 258);
+  }
+  .admin-modal-desc {
+    color: oklch(0.5 0.05 258);
+  }
+  .admin-modal-input {
+    border-color: oklch(0.84 0.03 258) !important;
+    color: oklch(0.18 0.04 258) !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  }
+  .admin-modal-input:focus-visible {
+    border-color: oklch(0.52 0.18 255) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px oklch(0.52 0.18 255 / 0.18) !important;
+  }
+  .admin-select-content {
+    background: white !important;
+    border-color: oklch(0.84 0.03 258) !important;
+  }
+  .admin-switch {
+    background: oklch(0.84 0.03 258) !important;
+  }
+  .admin-field-error {
+    color: oklch(0.52 0.16 30);
+  }
+  .admin-cancel-btn {
+    color: oklch(0.48 0.05 258) !important;
+  }
+  .admin-save-btn {
+    background: oklch(0.52 0.18 255) !important;
+    color: white !important;
+    transition: background 0.15s ease, transform 0.1s ease !important;
+  }
+  .admin-save-btn:hover:not(:disabled) {
+    background: oklch(0.58 0.2 255) !important;
+  }
+  .admin-save-btn:active:not(:disabled) {
+    transform: scale(0.96) !important;
+  }
+  .admin-save-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 3px oklch(0.52 0.18 255 / 0.35) !important;
+  }
+  .admin-delete-confirm-btn {
+    background: oklch(0.52 0.16 30) !important;
+    color: white !important;
+  }
+  .admin-delete-confirm-btn:hover:not(:disabled) {
+    background: oklch(0.44 0.18 30) !important;
+  }
+  .admin-highlight {
+    color: oklch(0.2 0.06 258);
+  }
+
+  /* Admin stats cards */
+  .admin-stats-card {
+    background: white;
+    border: 1px solid oklch(0.9 0.02 258);
+    border-radius: 1rem;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 2px 12px -3px oklch(0.52 0.1 258 / 0.12), 0 1px 3px -1px
+      oklch(0.2 0.04 260 / 0.06);
+  }
+  .admin-stats-label {
+    color: oklch(0.48 0.05 258);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .admin-stats-value {
+    color: oklch(0.18 0.04 258);
+    font-size: 2.25rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .admin-stats-icon {
+    background: linear-gradient(
+      135deg,
+      oklch(0.92 0.04 258),
+      oklch(0.96 0.02 258)
+    );
+    box-shadow: 0 2px 8px oklch(0.52 0.1 258 / 0.15);
+    color: oklch(0.48 0.1 258);
+    border-radius: 0.75rem;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .admin-stats-icon-instock {
+    background: linear-gradient(
+      135deg,
+      oklch(0.9 0.08 145),
+      oklch(0.95 0.04 145)
+    );
+    box-shadow: 0 2px 8px oklch(0.56 0.18 145 / 0.2);
+    color: oklch(0.32 0.1 145);
+  }
+  .admin-stats-icon-oos {
+    background: linear-gradient(135deg, oklch(0.9 0.06 30), oklch(0.95 0.03 30));
+    box-shadow: 0 2px 8px oklch(0.55 0.16 30 / 0.18);
+    color: oklch(0.42 0.12 30);
+  }
+  .admin-stats-icon-orders {
+    background: linear-gradient(
+      135deg,
+      oklch(0.88 0.1 255),
+      oklch(0.94 0.06 255)
+    );
+    box-shadow: 0 2px 8px oklch(0.52 0.18 255 / 0.2);
+    color: oklch(0.38 0.14 255);
+  }
+  .admin-badge-pending {
+    background: oklch(0.95 0.08 78);
+    color: oklch(0.4 0.14 62);
+  }
+  .admin-dot-pending {
+    background: oklch(0.65 0.18 72);
+  }
+  .admin-badge-confirmed {
+    background: oklch(0.92 0.06 255);
+    color: oklch(0.32 0.14 255);
+  }
+  .admin-dot-confirmed {
+    background: oklch(0.52 0.18 255);
+  }
+
+  /* Admin view store button */
+  .admin-view-store-btn {
+    color: oklch(0.65 0.1 255) !important;
+    border-color: oklch(0.4 0.06 258) !important;
+  }
+  .admin-view-store-btn:hover {
+    color: oklch(0.8 0.08 260) !important;
+    background: oklch(0.22 0.03 258) !important;
+  }
+
+  /* Admin grid view card */
+  .admin-grid-card {
+    background: white;
+    border: 1px solid oklch(0.88 0.02 258);
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .admin-grid-card:hover {
+    box-shadow: 0 4px 16px -4px oklch(0.52 0.18 255 / 0.15);
+    transform: translateY(-1px);
+  }
+
+  /* View toggle buttons */
+  .admin-view-toggle {
+    display: flex;
+    gap: 0.25rem;
+    background: oklch(0.93 0.015 258);
+    padding: 0.25rem;
+    border-radius: 0.625rem;
+  }
+  .admin-view-toggle-btn {
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.5rem;
+    color: oklch(0.52 0.06 258);
+    transition: background 0.15s ease, color 0.15s ease;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .admin-view-toggle-btn:hover {
+    background: oklch(0.88 0.02 258);
+    color: oklch(0.3 0.06 258);
+  }
+  .admin-view-toggle-btn.active {
+    background: white;
+    color: oklch(0.3 0.1 255);
+    box-shadow: 0 1px 4px -1px oklch(0.2 0.04 260 / 0.15);
+  }
+
+  /* Scroll to top button */
+  .scroll-top-btn {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 40;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: oklch(var(--primary));
+    color: oklch(var(--primary-foreground));
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px -4px oklch(0.68 0.19 62 / 0.45);
+    transition: background 0.2s ease;
+  }
+  .scroll-top-btn:hover {
+    background: oklch(0.72 0.2 62);
+  }
+  .scroll-top-btn:active {
+    transform: scale(0.92);
+  }
+  .scroll-top-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px oklch(0.68 0.19 62 / 0.45);
+  }
+
+  /* ── Admin Sidebar Layout ─────────────────────────────────────────────── */
+  .admin-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+  .admin-sidebar {
+    width: 220px;
+    min-height: 100vh;
+    background: oklch(0.14 0.025 260);
+    border-right: 1px solid oklch(0.22 0.03 260);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .admin-sidebar-logo {
+    padding: 0 1.25rem 1.5rem;
+    border-bottom: 1px solid oklch(0.22 0.03 260);
+    margin-bottom: 1rem;
+  }
+  .admin-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1.25rem;
+    margin: 0.15rem 0.5rem;
+    border-radius: 0.625rem;
+    color: oklch(0.58 0.06 258);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    border: none;
+    background: transparent;
+    width: calc(100% - 1rem);
+    text-align: left;
+  }
+  .admin-nav-item:hover {
+    background: oklch(0.2 0.03 260);
+    color: oklch(0.8 0.06 258);
+  }
+  .admin-nav-item.active {
+    background: oklch(0.52 0.18 255 / 0.18);
+    color: oklch(0.75 0.14 255);
+    font-weight: 600;
+  }
+  .admin-nav-item.active svg {
+    color: oklch(0.65 0.18 255);
+  }
+  .admin-content {
+    flex: 1;
+    min-width: 0;
+    background: oklch(0.96 0.008 258);
+    display: flex;
+    flex-direction: column;
+  }
+  /* Mobile nav for admin */
+  .admin-mobile-nav {
+    background: oklch(0.14 0.025 260);
+    border-color: oklch(0.22 0.03 260);
+    scrollbar-width: none;
+  }
+  .admin-mobile-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .admin-mobile-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.875rem;
+    border-radius: 0.5rem;
+    color: oklch(0.55 0.06 258);
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .admin-mobile-nav-btn.active {
+    background: oklch(0.52 0.18 255 / 0.18);
+    color: oklch(0.72 0.14 255);
+  }
+  @media (max-width: 768px) {
+    .admin-sidebar {
+      display: none;
+    }
+    .admin-layout {
+      flex-direction: column;
+    }
+  }
+
+  /* Store Settings section tokens */
+  .admin-settings-border {
+    border-color: oklch(0.84 0.03 258);
+  }
+  .admin-settings-divider {
+    border-color: oklch(0.9 0.02 258);
+  }
+  .admin-color-picker {
+    background: white;
+    cursor: pointer;
+  }
+  .admin-color-picker::-webkit-color-swatch-wrapper {
+    padding: 2px;
+  }
+  .admin-color-picker::-webkit-color-swatch {
+    border: none;
+    border-radius: 6px;
+  }
+}
+
+@layer base {
+  /* ── Founder Section tokens ───────────────────────────────────────────────
+     Warm saffron-cream section with heritage feel — heritage Rajasthan warmth.
+  ─────────────────────────────────────────────────────────────────────────── */
+  .founder-section {
+    background: oklch(0.94 0.04 72);
+    border-top: 1px solid oklch(0.86 0.06 72);
+    border-bottom: 1px solid oklch(0.86 0.06 72);
+  }
+  .founder-blob-1 {
+    background: oklch(0.82 0.14 72);
+  }
+  .founder-blob-2 {
+    background: oklch(0.72 0.16 55);
+  }
+  .founder-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.5;
+  }
+  .founder-label {
+    color: oklch(0.52 0.14 58);
+    letter-spacing: 0.14em;
+  }
+  .founder-divider-line {
+    background: oklch(0.72 0.14 62 / 0.5);
+  }
+  .founder-frame-outer {
+    background: oklch(0.78 0.14 65 / 0.3);
+  }
+  .founder-frame-inner {
+    background: oklch(0.92 0.06 72 / 0.6);
+  }
+  .founder-photo-overlay {
+    background: linear-gradient(
+      to bottom,
+      transparent 60%,
+      oklch(0.35 0.1 55 / 0.25) 100%
+    );
+  }
+  .founder-year-badge {
+    background: oklch(0.2 0.06 55);
+  }
+  .founder-year-label {
+    color: oklch(0.72 0.14 72);
+    letter-spacing: 0.10em;
+  }
+  .founder-year-value {
+    color: oklch(0.96 0.04 82);
+  }
+  .founder-quote-icon {
+    background: oklch(0.68 0.19 62 / 0.15);
+    border: 1px solid oklch(0.68 0.19 62 / 0.25);
+  }
+  .founder-quote-icon-color {
+    color: oklch(0.58 0.18 62);
+  }
+  .founder-pullquote {
+    color: oklch(0.22 0.06 52);
+  }
+  .founder-bio {
+    color: oklch(0.36 0.04 55);
+  }
+  .founder-name-divider {
+    background: oklch(0.68 0.19 62);
+  }
+  .founder-name {
+    color: oklch(0.18 0.05 48);
+  }
+  .founder-title {
+    color: oklch(0.52 0.12 58);
+    letter-spacing: 0.04em;
+  }
+  .founder-company {
+    color: oklch(0.58 0.08 62);
+    letter-spacing: 0.08em;
+  }
+  .founder-pillar {
+    background: oklch(0.99 0.01 80 / 0.7);
+    border: 1px solid oklch(0.86 0.06 72 / 0.6);
+  }
+  .founder-pillar-text {
+    color: oklch(0.42 0.1 58);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Playfair Display", Georgia, serif;
+  }
+
+  .font-admin {
+    font-family: "Bricolage Grotesque", "General Sans", sans-serif;
+  }
+
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ── Announcement bar ──────────────────────────────────────────────── */
+  .announcement-bar {
+    background: oklch(0.68 0.19 62);
+    color: white;
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    position: relative;
+    overflow: hidden;
+  }
+  .announcement-bar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      oklch(0.78 0.18 72 / 0.15) 50%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  /* ── Hero bottom accent ─────────────────────────────────────────────── */
+  .hero-bottom-accent {
+    height: 32px;
+    background: linear-gradient(
+      135deg,
+      oklch(0.68 0.19 62) 0%,
+      oklch(0.88 0.16 72) 100%
+    );
+    transform: skewY(-1deg);
+    transform-origin: left;
+    margin-bottom: -4px;
+  }
+
+  /* ── Footer dark theme ──────────────────────────────────────────────── */
+  .footer-dark {
+    background: oklch(0.18 0.04 48);
+  }
+  .footer-dark-text {
+    color: oklch(0.9 0.02 80);
+  }
+  .footer-dark-muted {
+    color: oklch(0.6 0.04 70);
+  }
+  .footer-dark-accent {
+    color: oklch(0.88 0.16 72);
+  }
+  .footer-dark-border {
+    border-color: oklch(0.28 0.04 50);
+  }
+  .footer-gradient-divider {
+    height: 2px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      oklch(0.68 0.19 62 / 0.8),
+      transparent
+    );
+  }
+
+  /* ── FIX 2: Product card — warm glow on hover ─────────────────────────
+     A subtle inner-light ring that evokes the warmth of ghee/dairy gold.
+     Cannot do this purely in Tailwind without a custom utility class.
+  ─────────────────────────────────────────────────────────────────────── */
+  .card-dairy-hover {
+    transition: box-shadow 0.25s ease, transform 0.25s ease, border-left 0.25s
+      ease;
+  }
+  .card-dairy-hover:hover {
+    box-shadow: 0 0 0 1.5px oklch(0.68 0.19 62 / 0.35), 0 12px 32px -6px
+      oklch(0.68 0.19 62 / 0.18), 0 4px 12px -3px oklch(0.18 0.04 45 / 0.1);
+    border-left: 3px solid oklch(0.68 0.19 62);
+  }
+
+  /* ── FIX 3: Trust bar — editorial dark strip ─────────────────────────── */
+  .trust-bar {
+    background: oklch(var(--trust-bar));
+  }
+  .trust-bar-text {
+    color: oklch(var(--trust-bar-fg));
+  }
+  .trust-bar-icon-wrap {
+    background: oklch(0.68 0.19 62 / 0.22);
+    border: 1px solid oklch(0.68 0.19 62 / 0.4);
+  }
+  .trust-bar-icon {
+    color: oklch(0.88 0.16 72);
+  }
+  .trust-bar-divider {
+    background: oklch(var(--trust-bar-fg) / 0.12);
+  }
+
+  /* ── Category badge tokens (token-based, not hardcoded Tailwind) ────── */
+  .badge-ghee {
+    background: oklch(var(--badge-ghee-bg));
+    color: oklch(var(--badge-ghee-fg));
+    border-color: oklch(var(--badge-ghee-bg) / 0.6);
+  }
+  .badge-paneer {
+    background: oklch(var(--badge-paneer-bg));
+    color: oklch(var(--badge-paneer-fg));
+    border-color: oklch(var(--badge-paneer-bg) / 0.6);
+  }
+  .badge-combo {
+    background: oklch(var(--badge-combo-bg));
+    color: oklch(var(--badge-combo-fg));
+    border-color: oklch(var(--badge-combo-bg) / 0.6);
+  }
+}

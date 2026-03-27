@@ -61,7 +61,7 @@ actor {
   stable var nextProductId : Nat = 1;
   stable var nextOrderId : Nat = 1001;
   stable var nextReviewId : Nat = 1;
-  stable var upiQrImage : Text = "";
+  stable var upiQrImage : Text = ""; // kept for upgrade compatibility
 
   stable var products = Map.empty<Nat, Product>();
   stable var orders = Map.empty<Nat, Order>();
@@ -237,16 +237,5 @@ actor {
       };
       case (null) { false };
     };
-  };
-
-  // ── UPI QR Code ────────────────────────────────────────────────────────────
-
-  public query ({ caller }) func getUpiQrImage() : async Text {
-    upiQrImage;
-  };
-
-  public shared ({ caller }) func setUpiQrImage(_sessionToken : Text, imageDataUrl : Text) : async Bool {
-    upiQrImage := imageDataUrl;
-    true;
   };
 };

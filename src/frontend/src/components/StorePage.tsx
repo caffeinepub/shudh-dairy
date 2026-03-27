@@ -95,12 +95,19 @@ export function StorePage() {
             const id = Number(p.id);
             // Check localStorage for image — admin stores images there to avoid ICP message size limits
             const localImg = localStorage.getItem(`product_img_${id}`);
-            const image =
-              localImg ||
-              (p.image && typeof (p.image as any).getDirectURL === "function"
-                ? (p.image as any).getDirectURL()
-                : "") ||
-              categoryDefaultImage(p.category);
+            let _imageUrl = localImg || "";
+            if (
+              !_imageUrl &&
+              p.image &&
+              typeof (p.image as any).getDirectURL === "function"
+            ) {
+              try {
+                _imageUrl = (p.image as any).getDirectURL() || "";
+              } catch {
+                _imageUrl = "";
+              }
+            }
+            const image = _imageUrl || categoryDefaultImage(p.category);
             return {
               id,
               name: p.name,

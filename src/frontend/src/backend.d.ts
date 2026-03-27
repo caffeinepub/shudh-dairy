@@ -68,10 +68,8 @@ export interface backendInterface {
     getAllReviews(): Promise<Array<Review>>;
     getFounderInfo(): Promise<FounderInfo>;
     getOrdersByPhone(phone: string): Promise<Array<Order>>;
-    getUpiQrImage(): Promise<string>;
     markReviewHelpful(id: bigint): Promise<boolean>;
     placeOrder(customerName: string, customerPhone: string, customerAddress: string, items: Array<OrderItem>, total: number): Promise<bigint>;
-    setUpiQrImage(_sessionToken: string, imageDataUrl: string): Promise<boolean>;
     updateFounderInfo(_sessionToken: string, name: string, title: string, bio: string, foundedYear: string, photoUrl: string): Promise<boolean>;
     updateOrderStatus(_sessionToken: string, orderId: bigint, status: string): Promise<boolean>;
     updateProduct(_sessionToken: string, id: bigint, name: string, description: string, price: number, category: string, weight: string, inStock: boolean, image: ExternalBlob): Promise<boolean>;

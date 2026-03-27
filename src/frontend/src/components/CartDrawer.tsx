@@ -286,18 +286,8 @@ export function CartDrawer({
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [placedOrderId, setPlacedOrderId] = useState<number | null>(null);
-  const [upiQrUrl, setUpiQrUrl] = useState<string>(() => getUpiQr());
-  useEffect(() => {
-    if (!actor) return;
-    actor
-      .getUpiQrImage()
-      .then((url: string) => {
-        if (url) setUpiQrUrl(url);
-      })
-      .catch(() => {
-        // fall back to localStorage value already set
-      });
-  }, [actor]);
+  const [upiQrUrl] = useState<string>(() => getUpiQr());
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const openCheckout = () => {

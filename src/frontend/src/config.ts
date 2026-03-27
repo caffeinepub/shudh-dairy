@@ -99,6 +99,8 @@ async function maybeLoadMockBackend(): Promise<backendInterface | null> {
   }
 
   try {
+    // If VITE_USE_MOCK is enabled, try to load a mock backend module *if it exists*.
+    // We use import.meta.glob so builds don't fail when the mock file is absent.
     const mockModules = import.meta.glob("./mocks/backend.{ts,tsx,js,jsx}");
 
     const path = Object.keys(mockModules)[0];
@@ -117,6 +119,7 @@ async function maybeLoadMockBackend(): Promise<backendInterface | null> {
 export async function createActorWithConfig(
   options?: CreateActorOptions,
 ): Promise<backendInterface> {
+  // Attempt to load mock backend if enabled
   const mock = await maybeLoadMockBackend();
   if (mock) {
     return mock;
@@ -161,23 +164,10 @@ export async function createActorWithConfig(
   };
 
   const downloadFile = async (bytes: Uint8Array): Promise<ExternalBlob> => {
-    try {
-      const hashWithPrefix = new TextDecoder().decode(new Uint8Array(bytes));
-      // Guard: if bytes are empty or missing the sentinel prefix, return empty blob
-      if (!hashWithPrefix || !hashWithPrefix.startsWith(MOTOKO_DEDUPLICATION_SENTINEL)) {
-        return ExternalBlob.fromURL("");
-      }
-      const hash = hashWithPrefix.substring(MOTOKO_DEDUPLICATION_SENTINEL.length);
-      // Guard: if hash is empty after stripping the sentinel, skip the network call
-      if (!hash) {
-        return ExternalBlob.fromURL("");
-      }
-      const url = await storageClient.getDirectURL(hash);
-      return ExternalBlob.fromURL(url);
-    } catch {
-      // Any blob resolution failure returns an empty blob so the page never crashes
-      return ExternalBlob.fromURL("");
-    }
+    const hashWithPrefix = new TextDecoder().decode(new Uint8Array(bytes));
+    const hash = hashWithPrefix.substring(MOTOKO_DEDUPLICATION_SENTINEL.length);
+    const url = await storageClient.getDirectURL(hash);
+    return ExternalBlob.fromURL(url);
   };
 
   return createActor(

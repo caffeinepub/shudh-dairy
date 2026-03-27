@@ -406,7 +406,14 @@ export function AdminDashboard() {
           const id = Number(p.id);
           // Check localStorage first — images are stored there to avoid ICP message size limits
           const localImg = localStorage.getItem(`product_img_${id}`);
-          const imageUrl = localImg || p.image.getDirectURL() || "";
+          let imageUrl = localImg || "";
+          if (!imageUrl) {
+            try {
+              imageUrl = p.image.getDirectURL() || "";
+            } catch {
+              imageUrl = "";
+            }
+          }
           return {
             id,
             name: p.name,
@@ -710,15 +717,7 @@ export function AdminDashboard() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [upiQrPreview, setUpiQrPreview] = useState<string>(() => getUpiQr());
-  useEffect(() => {
-    if (!actor) return;
-    (actor as any)
-      .getUpiQrImage()
-      .then((url: string) => {
-        if (url) setUpiQrPreview(url);
-      })
-      .catch(() => {});
-  }, [actor]);
+
   const bgImageInputRef = useRef<HTMLInputElement>(null);
   const upiQrInputRef = useRef<HTMLInputElement>(null);
 
@@ -780,11 +779,6 @@ export function AdminDashboard() {
       // Save UPI QR code
       if (upiQrPreview) {
         setUpiQr(upiQrPreview);
-        try {
-          await (actor as any)?.setUpiQrImage(token, upiQrPreview);
-        } catch {
-          toast.error("Failed to save QR code to server.");
-        }
       } else {
         removeUpiQr();
       }
